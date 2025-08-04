@@ -1,5 +1,4 @@
 #include "database.h"
-
 Database::Database(QObject *parent) : QObject(parent), isConnected(false)
 {
 }
@@ -18,6 +17,13 @@ bool Database::connect(const QString &hostname, const QString &dbName,
     m_db.setUserName(username);
     m_db.setPassword(password);
     m_db.setPort(port);
+
+    m_db.setConnectOptions(
+        "SSL_KEY=C:/MySQL/certs/client-key.pem;"
+        "SSL_CERT=C:/MySQL/certs/client-cert.pem;"
+        "SSL_CA=C:/MySQL/certs/ca.pem;"
+        );
+
 
     isConnected = m_db.open();
     if (!isConnected) {

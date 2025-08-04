@@ -23,7 +23,7 @@ bool ApiServer::start(int port)
     }
 
     // 데이터베이스 연결 확인
-    if (!m_database || !m_database->connect("127.0.0.1", "shopdb", "manager", "1234", 3306)) {
+    if (!m_database || !m_database->connect("192.168.2.57", "bank", "master", "1107", 3306)) {
         emit errorOccurred("데이터베이스 연결 실패. 서버를 시작할 수 없습니다.");
         return false;
     }
@@ -95,7 +95,7 @@ void ApiServer::setupEndpoints()
         // 가정: m_database에 getByCondition(tableName, conditionColumn, conditionValue) 같은 메소드가 있다고 가정합니다.
         // 이 메소드는 QJsonObject를 반환하거나 QJsonArray를 반환할 수 있습니다.
         // 여기서는 단일 'Edward' 항목을 가정하고 QJsonObject를 반환하도록 합니다.
-        QJsonObject userData = m_database->getByCondition("membertbl", "memberID", "Edward");
+        QJsonObject userData = m_database->getByCondition("clientdb", "id", "1");
 
         if (userData.isEmpty()) {
             if (m_database->lastError().isValid()) { // 조회 중 SQL 에러 발생 시
