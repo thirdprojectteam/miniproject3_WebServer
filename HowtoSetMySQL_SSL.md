@@ -21,15 +21,15 @@ m_db.setConnectOptions(
 4. SSL 클라이언트 키 생성
 
 -  CA (자체 서명)
-openssl genrsa -out ca-key.pem 2048
-openssl req -new -x509 -days 365 -key ca-key.pem -out ca.pem -subj "/CN=MySQL Test CA"
+- openssl genrsa -out ca-key.pem 2048
+- openssl req -new -x509 -days 365 -key ca-key.pem -out ca.pem -subj "/CN=MySQL Test CA"
 
 -  클라이언트 키 + 요청
-openssl genrsa -out client-key.pem 2048
-openssl req -new -key client-key.pem -out client-req.pem -subj "/CN=MySQL Client"
+- openssl genrsa -out client-key.pem 2048
+- openssl req -new -key client-key.pem -out client-req.pem -subj "/CN=MySQL Client"
 
 -  클라이언트 인증서 발급
-openssl x509 -req -in client-req.pem -days 365 -CA ca.pem -CAkey ca-key.pem -set_serial 01 -out client-cert.pem
+- openssl x509 -req -in client-req.pem -days 365 -CA ca.pem -CAkey ca-key.pem -set_serial 01 -out client-cert.pem
 
 - cd C:\Program Files\MySQL\MySQL Server 8.0\bin
 - mysql_ssl_rsa_setup --datadir=C:\MySQL\certs --uid=mysql
