@@ -44,13 +44,13 @@ m_db.setConnectOptions(
 - openssl req -new -key server-key.pem -out server-req.pem -subj "/CN=MySQL_Server"
 - openssl x509 -req -in server-req.pem -days 365 -CA ca.pem -CAkey ca-key.pem -set_serial 02 -out server-cert.pem
 
-6. my.ini 파일 수정 (C:\ProgramData\MySQL\MySQL Server 8.0)
-
-[mysqld]
-ssl-ca = C:/MySQL/certs/ca.pem
-ssl-cert = C:/MySQL/certs/server-cert.pem
-ssl-key = C:/MySQL/certs/server-key.pem
-require_secure_transport = ON
+6. my.ini 파일 수정 (C:\ProgramData\MySQL\MySQL Server 8.0)  
+  
+[mysqld]  
+ssl-ca = C:/MySQL/certs/ca.pem  
+ssl-cert = C:/MySQL/certs/server-cert.pem  
+ssl-key = C:/MySQL/certs/server-key.pem  
+require_secure_transport = ON  
 
 
 
