@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QSqlDatabase>
+#include <QSqlError>
 
 class DataBase: public QObject
 {
@@ -20,9 +21,18 @@ public:
 
 protected:
     QString       TableName;
-    QString       SchemaName;
     qint64        TotalSize;
     QSqlDatabase& m_db;
+    QSqlError     m_lastError;
+
+signals:
+    void Finish(bool success, const QString &operation, const QSqlError &error = QSqlError());
+
+private:
+    // 유틸리티 함수
+    virtual QString buildUpdateQuery(const QString &table, int id, const QJsonObject &data);
+    virtual QString buildInsertQuery(const QString &table, const QJsonObject &data);
+    virtual void bindJsonToQuery(QSqlQuery &query, const QJsonObject &data);
 
 };
 

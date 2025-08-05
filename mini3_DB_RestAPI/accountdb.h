@@ -1,12 +1,12 @@
 #ifndef ACCOUNTDB_H
 #define ACCOUNTDB_H
 
-#include <database.h>
+#include "database.h"
 
-class AccountDB : public Database
+class AccountDB : public DataBase
 {
 public:
-    explicit AccountDB(QObject *parent = nullptr);
+    explicit AccountDB(QSqlDatabase &Dm, QObject *parent = nullptr);
 };
 
 #endif // ACCOUNTDB_H

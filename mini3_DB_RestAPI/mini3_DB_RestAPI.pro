@@ -12,6 +12,7 @@ SOURCES += \
     accountdb.cpp \
     apiserver.cpp \
     clientdb.cpp \
+    database.cpp \
     datamanager.cpp \
     endpoints.cpp \
     main.cpp \

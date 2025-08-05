@@ -3,7 +3,7 @@
 
 #include <QObject>
 
-class EndPoints
+class EndPoints : public QObject
 {
     Q_OBJECT
 public:

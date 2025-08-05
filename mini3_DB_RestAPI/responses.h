@@ -3,7 +3,7 @@
 
 #include <QObject>
 
-class Responses
+class Responses : public QObject
 {
     Q_OBJECT
 public:

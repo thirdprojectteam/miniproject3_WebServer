@@ -1,5 +1,7 @@
 #include "accountdb.h"
 
-AccountDB::AccountDB(QObject *parent)
-    : Database{parent}
-{}
+AccountDB::AccountDB(QSqlDatabase &Dm,QObject *parent)
+    : DataBase(Dm,parent)
+{
+
+}
