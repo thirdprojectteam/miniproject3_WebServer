@@ -2,22 +2,27 @@
 #define DATABASE_H
 
 #include <QObject>
-class DataManager;
+#include <QSqlDatabase>
+
 class DataBase: public QObject
 {
     Q_OBJECT
 public:
-    explicit DataBase(DataManager *Dm, QObject *parent = nullptr);
-    virtual  QJsonDocument LoadData   ()                              = 0;
-    virtual  void          AddData    (const QByteArray    &NewData) {};
-    virtual  void          ModifyData (const QByteArray    &ModiData){};
-    virtual  void          DeleteData (const QByteArray    &DelData) {};
+    explicit DataBase(QSqlDatabase &Dm, QObject *parent = nullptr);
+    //출력
+    virtual QJsonArray getAll() = 0;
+    virtual QJsonObject getById(int id)= 0;
+    virtual QJsonObject getByCondition(const QString &cond,const QString &id)= 0;
+    //입력
+    virtual bool insert(const QJsonObject &data)= 0;
+    virtual bool update(int id, const QJsonObject &data)= 0;
+    virtual bool remove(int id)= 0;
 
 protected:
-    QString     FilePath;
-    QString     FileName;
-    qint64      TotalSize;
-    DataManager *DbManager;
+    QString       TableName;
+    QString       SchemaName;
+    qint64        TotalSize;
+    QSqlDatabase& m_db;
 
 };
 

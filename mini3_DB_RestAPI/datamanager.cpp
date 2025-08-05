@@ -1,3 +1,6 @@
 #include "datamanager.h"
 
-DataManager::DataManager() {}
+DataManager::DataManager(QObject *parent) : QObject(parent)
+{
+
+}
