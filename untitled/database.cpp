@@ -158,7 +158,7 @@ QJsonObject Database::getByCondition(const QString &table, const QString &header
 
     return resultObject;
 }
-
+//추가된 부분
 bool Database::insert(const QString &table, const QJsonObject &data)
 {
     if (!isConnected) {
@@ -168,7 +168,7 @@ bool Database::insert(const QString &table, const QJsonObject &data)
     }
 
     QString sql = buildInsertQuery(table, data);
-    QSqlQuery query;
+    QSqlQuery query(m_db);
     query.prepare(sql);
 
     bindJsonToQuery(query, data);

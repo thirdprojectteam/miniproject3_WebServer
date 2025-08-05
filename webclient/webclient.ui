@@ -36,6 +36,19 @@
     </rect>
    </property>
   </widget>
+  <widget class="QPushButton" name="PostButton">
+   <property name="geometry">
+    <rect>
+     <x>390</x>
+     <y>250</y>
+     <width>141</width>
+     <height>41</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>post</string>
+   </property>
+  </widget>
  </widget>
  <resources/>
  <connections/>

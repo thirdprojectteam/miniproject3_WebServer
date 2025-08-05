@@ -81,8 +81,8 @@ void ApiServer::setupEndpoints()
     m_server->route("*", [](const QHttpServerRequest &) {
         return QHttpServerResponse("text/plain", QByteArrayLiteral("404 Not Found"), QHttpServerResponse::StatusCode::NotFound);
     });
-    //users
-    m_server->route("/api/users", [this]() { // [this] 캡처를 통해 ApiServer 멤버(m_database)에 접근
+    //users get
+    m_server->route("/api/users", QHttpServerRequest::Method::Get,[this](const QHttpServerRequest &request) { // [this] 캡처를 통해 ApiServer 멤버(m_database)에 접근
         // 데이터베이스 연결 확인
         if (!m_database || !m_database->isConnected) {
             qWarning() << "Database not connected for /api/users request.";
@@ -114,6 +114,43 @@ void ApiServer::setupEndpoints()
         // 성공적으로 데이터를 찾았을 때 JSON 응답 반환
         return QHttpServerResponse("application/json",
                                    QJsonDocument(createResponse(true, "사용자 'Edward' 정보 조회 성공", userData)).toJson(QJsonDocument::Compact));
+    });
+    //users post 건드린부분
+    m_server->route("/api/users", QHttpServerRequest::Method::Post,[this](const QHttpServerRequest &request){
+        QJsonParseError parseError;
+        QByteArray reqbody = request.body();
+        qDebug()<<reqbody;
+        QJsonDocument doc = QJsonDocument::fromJson(request.body(), &parseError);
+        if (parseError.error != QJsonParseError::NoError) {
+            qWarning() << "Failed to parse JSON body:" << parseError.errorString();
+            return QHttpServerResponse("application/json",
+                                       QJsonDocument(createResponse(false, "잘못된 JSON 형식입니다.", QJsonObject{{"code", 400}})).toJson(QJsonDocument::Compact),
+                                       QHttpServerResponse::StatusCode::BadRequest);
+        }
+
+        QJsonObject postData = doc.object();
+        auto data = postData["data"].toObject();
+
+        qDebug() << "POST Data received:"<<postData;
+
+        for (auto it = data.begin(); it != data.end(); ++it) {
+            qDebug() << it.key() << ":" << it.value().toVariant();
+        }
+
+        //tablename, jsonobjectfile
+        //tablename은 membertable로 따로 보내줘야할듯.
+        bool insertSuccess = m_database->insert("clientdb", data);
+
+        if (!insertSuccess) {
+            qWarning() << "Failed to insert user:" << m_database->lastError().text();
+            return QHttpServerResponse("application/json",
+                                       QJsonDocument(createResponse(false, "사용자 추가 실패: " + m_database->lastError().text(), QJsonObject{{"code", 500}})).toJson(QJsonDocument::Compact),
+                                       QHttpServerResponse::StatusCode::InternalServerError);
+        } else {
+            return QHttpServerResponse("application/json",
+                                       QJsonDocument(createResponse(true, "사용자 추가 성공", QJsonObject{{"memberTable", "membertbl"}, {"Data", postData}})).toJson(QJsonDocument::Compact),
+                                       QHttpServerResponse::StatusCode::Ok);
+        }
     });
 }
 
