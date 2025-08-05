@@ -172,41 +172,70 @@ void dumi_web::readClient()
     qDebug() << "Received from client:" << requestLine;
     InfoMsg->append(QString("Client Request: %1").arg(requestLine));
 
+    QStringList parts = requestLine.split(" ");
+    QString path;
+    if(parts.size()>=2){
+        path = parts[1];
+    }
+
     // HTTP 요청 파싱 (간단한 GET 예시)
     if (requestLine.startsWith("GET")) {
-        QStringList parts = requestLine.split(" ");
-        if (parts.size() >= 2) {
-            QString path = parts[1];
+        // 특정 경로에 대해 RESTful API 요청 처리
+        if (path.startsWith("/api/")) {
+            QString apiEndpoint = "http://localhost:8080" + path;
+            InfoMsg->append("Forwarding API GET request to: " + apiEndpoint);
 
-            // 특정 경로에 대해 RESTful API 요청 처리
-            if (path.startsWith("/api/")) {
-                QString apiEndpoint = "http://localhost:8080" + path;
-                InfoMsg->append("Forwarding API GET request to: " + apiEndpoint);
-
-                QNetworkReply* reply = networkHandler->sendGetRequest(apiEndpoint);
-                if (reply) {
-                    // QNetworkReply*를 키로 현재 클라이언트 소켓을 저장
-                    pendingApiReplies.insert(reply, socket);
-                } else {
-                    QString errorMsg = "HTTP/1.1 500 Internal Server Error\r\n\r\n";
-                    socket->write(errorMsg.toUtf8());
-                    socket->flush();
-                    socket->disconnectFromHost();
-                    InfoMsg->append("Error: Failed to send internal API request.");
-                }
-
-            } else {
-                // /api/가 아닌 일반 GET 요청 처리 (예: 웹 페이지 제공)
-                QString responseContent = "<html><body><h1>Hello from simple web server!</h1><p>Path: " + path + "</p></body></html>";
-                QString httpResponse = "HTTP/1.1 200 OK\r\n"
-                                       "Content-Type: text/html\r\n"
-                                       "Content-Length: " + QString::number(responseContent.toUtf8().size()) + "\r\n"
-                                                                                            "\r\n" + responseContent;
-                socket->write(httpResponse.toUtf8());
-                socket->flush();
-                socket->disconnectFromHost(); // 응답 후 연결 종료 (간단한 서버 예시)
-                InfoMsg->append("Sent HTML response to client for path: " + path);
+            QNetworkReply* reply = networkHandler->sendGetRequest(apiEndpoint);
+            if (requestLine.startsWith("GET")) {
+                reply = networkHandler->sendGetRequest(apiEndpoint);
             }
+            if (reply) {
+                // QNetworkReply*를 키로 현재 클라이언트 소켓을 저장
+                pendingApiReplies.insert(reply, socket);
+            } else {
+                QString errorMsg = "HTTP/1.1 500 Internal Server Error\r\n\r\n";
+                socket->write(errorMsg.toUtf8());
+                socket->flush();
+                socket->disconnectFromHost();
+                InfoMsg->append("Error: Failed to send internal API request.");
+            }
+        } else {
+            // /api/가 아닌 일반 GET 요청 처리 (예: 웹 페이지 제공)
+            QString responseContent = "<html><body><h1>Hello from simple web server!</h1><p>Path: " + path + "</p></body></html>";
+            QString httpResponse = "HTTP/1.1 200 OK\r\n"
+                                   "Content-Type: text/html\r\n"
+                                   "Content-Length: " + QString::number(responseContent.toUtf8().size()) + "\r\n"
+                                                                                        "\r\n" + responseContent;
+            socket->write(httpResponse.toUtf8());
+            socket->flush();
+            socket->disconnectFromHost(); // 응답 후 연결 종료 (간단한 서버 예시)
+            InfoMsg->append("Sent HTML response to client for path: " + path);
+        }
+    } else if(requestLine.startsWith("POST")){
+        QString apiEndpoint = "http://localhost:8080" + path;
+        InfoMsg->append("Forwarding API Post request to: " + apiEndpoint);
+
+        QByteArray requestData;
+        // Body를 다 읽어온 경우
+        while (socket->bytesAvailable()) {
+            requestData.append(socket->readAll());
+        }
+        //여기 index값 수정되었습니다. -> 이제 header빼고 body부분만 보냅니다.
+        InfoMsg->append("POST Body Data: " + QString::fromUtf8(requestData));
+        int headerEndIndex = requestData.indexOf("\r\n\r\n");
+
+        QByteArray bodyData = requestData.mid(headerEndIndex + 4);
+
+        QNetworkReply* reply = networkHandler->sendPostRequest(apiEndpoint, bodyData);
+
+        if(reply){
+            pendingApiReplies.insert(reply, socket);
+        } else {
+            QString errorMsg = "HTTP/1.1 500 Internal Server Error\r\n\r\n";
+            socket->write(errorMsg.toUtf8());
+            socket->flush();
+            socket->disconnectFromHost();
+            InfoMsg->append("Error: Failed to send internal API request.");
         }
     } else {
         // 다른 HTTP 메서드 (POST 등) 처리 또는 오류 응답

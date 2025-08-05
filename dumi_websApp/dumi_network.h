@@ -16,7 +16,7 @@ public:
     ~NetworkHandler();
 
     QNetworkReply* sendGetRequest(const QString &endpoint);
-    QNetworkReply* sendPostRequest(const QString &endpoint, const QJsonObject &data);
+    QNetworkReply* sendPostRequest(const QString &endpoint, const QByteArray &data);
 
 signals:
     // -- 이 부분 시그널에 QNetworkReply* 인자를 추가합니다 --

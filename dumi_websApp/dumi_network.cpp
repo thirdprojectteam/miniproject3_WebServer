@@ -24,14 +24,14 @@ QNetworkReply* NetworkHandler::sendGetRequest(const QString &endpoint) // 여기
 }
 
 // sendPostRequest 함수 구현
-QNetworkReply* NetworkHandler::sendPostRequest(const QString &endpoint, const QJsonObject &data) // 여기도 QNetworkReply*로 변경
+QNetworkReply* NetworkHandler::sendPostRequest(const QString &endpoint, const QByteArray &data) // 여기도 QNetworkReply*로 변경
 {
-    qDebug() << "Sending POST request to:" << endpoint;
     QNetworkRequest request;
     request.setUrl(QUrl(endpoint));
+    //아마 추가했을거임
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-    QJsonDocument doc(data);
-    QNetworkReply* reply = manager->post(request, doc.toJson());
+
+    QNetworkReply* reply = manager->post(request, data);
     return reply; // manager->post()가 반환한 QNetworkReply*를 그대로 반환합니다.
 }
 

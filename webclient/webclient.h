@@ -23,6 +23,8 @@ private slots:
     void onRequestButtonClicked(); // "요청 보내기" 버튼 클릭 시 호출될 슬롯
     void onNetworkReplyFinished(QNetworkReply *reply); // 네트워크 요청 완료 시 호출될 슬롯
 
+    void on_PostButton_clicked();
+
 private:
     Ui::webclient *ui;
     QNetworkAccessManager *networkManager; // 네트워크 요청을 관리하는 객체
