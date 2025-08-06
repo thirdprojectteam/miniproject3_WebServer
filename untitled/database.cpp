@@ -263,6 +263,7 @@ bool Database::updateBudget(const QString &table, int status, const QJsonObject 
         return false;
     }
     QJsonObject recvdata;
+
     if(status==0){//deposit
         //여기서 data열어서 UID랑 amount랑 name들고옴.
         if(!data.isEmpty()&&data["data"].isObject()){
@@ -350,7 +351,15 @@ bool Database::updateBudget(const QString &table, int status, const QJsonObject 
         if(!data.isEmpty()&&data["data"].isObject()){
             recvdata = data["data"].toObject();
         }
-        QString FromUID = recvdata["UID"].toString();
+        QString FromUid = recvdata["UID"].toString();
+        QString FromUID="-1";
+        if(FromUid=="B1457D09"){
+            FromUID="12345678";
+        }else if(FromUid=="F3CC65BD"){
+            FromUID="87654321";
+        }else {
+            FromUID="-1";
+        }
         QString name = recvdata["name"].toString();
         QString amount = recvdata["amount"].toString();
         QString ToUID = recvdata["targetUID"].toString();
