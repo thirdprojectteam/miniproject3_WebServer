@@ -38,23 +38,30 @@ QNetworkReply* NetworkHandler::sendPostRequest(const QString &endpoint, const QB
 
 void NetworkHandler::onGetReplyFinished(QNetworkReply *reply)
 {
+    // QNetworkReply에서 에러 확인
     if (reply->error() == QNetworkReply::NoError) {
         QByteArray responseData = reply->readAll();
-        QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
-        if (!jsonDoc.isNull() && (jsonDoc.isObject() || jsonDoc.isArray())) {
-            // getRequestFinished 시그널에 'reply' 객체를 함께 보냅니다.
-            emit getRequestFinished(jsonDoc.object(), reply); // 수정됨
+        QJsonParseError parseError;
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData, &parseError);
+
+        if (parseError.error == QJsonParseError::NoError) {
+            // JSON이 객체인지 배열인지 검사
+            if (jsonDoc.isArray()) {
+                emit getRequestFinished(jsonDoc.array(), reply);
+            } else {
+                emit requestFailed("GET: Unknown JSON type", reply);
+            }
         } else {
-            // requestFailed 시그널에 'reply' 객체를 함께 보냅니다.
-            emit requestFailed("Invalid JSON response for GET: " + QString(responseData), reply); // 수정됨
+            emit requestFailed("Invalid JSON response for GET: " + QString(responseData), reply);
         }
     } else {
-        // requestFailed 시그널에 'reply' 객체를 함께 보냅니다.
-        emit requestFailed("GET request error: " + reply->errorString(), reply); // 수정됨
+        emit requestFailed("GET request error: " + reply->errorString(), reply);
     }
-    // QNetworkReply 객체의 메모리 해제는 여기서 하는 것이 좋습니다.
+
+    // reply 해제
     reply->deleteLater();
 }
+
 
 void NetworkHandler::onPostReplyFinished(QNetworkReply *reply)
 {

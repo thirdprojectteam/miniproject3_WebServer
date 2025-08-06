@@ -1,13 +1,19 @@
 #ifndef RESPONSES_H
 #define RESPONSES_H
 
-#include <QObject>
+#include <QtConcurrent/QtConcurrent>
+#include <QFuture>
+#include <QHttpServerResponse>
+#include "Endpoints.h"
 
-class Responses : public QObject
+class Responses
 {
-    Q_OBJECT
 public:
-    Responses();
+    Responses(const EndPoints &eps);
+    QFuture<QHttpServerResponse> asyncResponse(const QString &table) const;
+
+private:
+    const EndPoints &eps_;
 };
 
 #endif // RESPONSES_H

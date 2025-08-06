@@ -10,6 +10,9 @@
 #include <QTcpServer>
 
 #include "clientdb.h"
+#include "endpoints.h"
+#include "responses.h"
+
 class APIServer : public QObject
 {
     Q_OBJECT
@@ -31,6 +34,8 @@ private:
     QTcpServer tcpServer; //QTcpServer를 사용하여 바인딩
     bool isRunning;
     ClientDB clientdb;
+    EndPoints endpoints;
+    Responses response;
 };
 
 #endif // APISERVER_H

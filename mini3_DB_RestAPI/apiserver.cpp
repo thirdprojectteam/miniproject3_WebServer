@@ -1,18 +1,18 @@
 #include "apiserver.h"
 
-
 #include <QSqlDatabase>
 #include <QtConcurrent/QtConcurrent>
 #include <QFuture>
 APIServer::APIServer(QObject *parent)
     : QObject(parent), httpServer(new QHttpServer(this)),
-    tcpServer(new QTcpServer(this)), isRunning(false)
-{}
+    tcpServer(new QTcpServer(this)), isRunning(false),response(endpoints)
+{
+    // 1) Endpoints에 DB 객체 등록
+    endpoints.registerDb("clientdb", &clientdb);
+}
 
 APIServer::~APIServer()
-{
-
-}
+{}
 
 bool APIServer::start(int port)
 {
@@ -63,21 +63,7 @@ void APIServer::stop()
 
 void APIServer::setupRoutes()
 {
-    httpServer->route(
-        "/client/<arg>",
-        QHttpServerRequest::Method::Get,
-        [this](const QString &table) -> QFuture<QHttpServerResponse>
-        {
-            return QtConcurrent::run([this, table]() {
-                QJsonDocument responseDoc;
-                if (table == "clientdb") {
-                    QJsonArray list = clientdb.getAll();
-                    responseDoc = QJsonDocument(list);
-                }
-                return QHttpServerResponse("application/json",
-                                           responseDoc.toJson());
-            });
-        }
-        );
+    httpServer->route("/client/<arg>",QHttpServerRequest::Method::Get,[this](const QString &table) -> QFuture<QHttpServerResponse>{
+        return response.asyncResponse(table); });
 }
 

@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QSqlDatabase>
 #include <QSqlError>
-
+#include <QJsonArray>
 class DataBase: public QObject
 {
     Q_OBJECT

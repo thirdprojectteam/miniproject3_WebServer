@@ -1,16 +1,25 @@
 #ifndef ENDPOINTS_H
 #define ENDPOINTS_H
 
-#include <QObject>
+#include <QMap>
+#include <QString>
+#include <QHttpServerResponse>
+#include <QJsonDocument>
+#include "database.h"
 
-class EndPoints : public QObject
+class EndPoints
 {
-    Q_OBJECT
 public:
-    EndPoints(QObject *parent = nullptr);
+    EndPoints();
     ~EndPoints();
+    // "clientdb" 같은 키와, 해당 DB 객체 포인터를 등록
+    void registerDb(const QString &name, DataBase *db);
+
+    // table 이름으로 QHttpServerResponse 생성
+    QHttpServerResponse buildResponse(const QString &table) const;
 
 private:
+    QMap<QString, DataBase*> dbMap;
 };
 
 #endif // ENDPOINTS_H

@@ -40,9 +40,10 @@ dumi_web::dumi_web(QWidget *parent) : QWidget(parent)
     // QNetworkAccessManager는 NetworkHandler 내부에서 초기화됨
     networkHandler = new NetworkHandler(this);
     // -- connect 시그니처를 변경된 슬롯에 맞게 수정 --
-    connect(networkHandler, &NetworkHandler::getRequestFinished, this, &dumi_web::handleGetResult);
+    //connect(networkHandler, &NetworkHandler::getRequestFinished, this, &dumi_web::handleGetResult);
     connect(networkHandler, &NetworkHandler::postRequestFinished, this, &dumi_web::handlePostResult);
     connect(networkHandler, &NetworkHandler::requestFailed, this, &dumi_web::handleRequestError);
+    connect(networkHandler, &NetworkHandler::getRequestFinished, this, &dumi_web::handleGetArrayResult);
 
     // --- 여기에 서버 실행 코드 추가 ---
     // 포트는 portInput에 설정된 8081을 사용하도록 합니다.
@@ -158,6 +159,41 @@ void dumi_web::handleRequestError(const QString &errorString, QNetworkReply* api
     } else {
         qWarning() << "Client socket for error reply not found or disconnected!";
         InfoMsg->append("Warning: Client socket for error reply was invalid or disconnected.");
+    }
+}
+
+void dumi_web::handleGetArrayResult(const QJsonArray &data, QNetworkReply *reply)
+{
+    // 디버그 및 UI 로그: GET 결과
+    qDebug() << "GET Request Result (Array):" << data;
+    InfoMsg->append("GET Result: " + QJsonDocument(data).toJson(QJsonDocument::Compact));
+
+    // API 요청-응답 매핑에서 소켓 가져오기
+    QTcpSocket* clientSocket = pendingApiReplies.take(reply);
+
+    if (clientSocket && clientSocket->isOpen() && clientSocket->state() == QAbstractSocket::ConnectedState) {
+        // JSON 배열을 QJsonDocument로 래핑
+        QJsonDocument doc(data);
+        QByteArray jsonResponse = doc.toJson(QJsonDocument::Compact);
+
+        // HTTP 응답 헤더 및 바디 구성
+        QString httpResponse =
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: application/json\r\n"
+            "Content-Length: " + QString::number(jsonResponse.size()) + "\r\n"
+                                                     "Connection: close\r\n"
+                                                     "\r\n";
+
+        // 클라이언트로 전송
+        clientSocket->write(httpResponse.toUtf8());
+        clientSocket->write(jsonResponse);
+        clientSocket->flush();
+        clientSocket->disconnectFromHost();
+
+        InfoMsg->append("Sent API JSON response back to client for GET.");
+    } else {
+        qWarning() << "Client socket for GET API reply not found or disconnected!";
+        InfoMsg->append("Warning: Client socket for GET API reply was invalid or disconnected.");
     }
 }
 // 클라이언트 요청 처리 함수 수정

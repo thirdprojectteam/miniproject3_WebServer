@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QTcpServer>
 #include <QTextEdit>
+#include <QJsonArray>
 #include <QJsonObject> // QJsonObject 필요하면 그대로 유지
 #include "dumi_network.h" // 새로 만든 NetworkHandler 헤더 포함
 
@@ -21,7 +22,7 @@ private slots:
     void handleGetResult(const QJsonObject &data, QNetworkReply* reply); // QNetworkReply* 인자 추가
     void handlePostResult(const QJsonObject &data, QNetworkReply* reply); // QNetworkReply* 인자 추가
     void handleRequestError(const QString &errorString, QNetworkReply* reply); // QNetworkReply* 인자 추가
-
+    void handleGetArrayResult(const QJsonArray &data, QNetworkReply* reply);
 private:
     QTcpServer* tcpServer;
     QTextEdit* InfoMsg;
