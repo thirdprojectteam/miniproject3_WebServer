@@ -181,14 +181,15 @@ void dumi_web::readClient()
     // HTTP 요청 파싱 (간단한 GET 예시)
     if (requestLine.startsWith("GET")) {
         // 특정 경로에 대해 RESTful API 요청 처리
-        if (path.startsWith("/api/")) {
+        if (path.startsWith("/client/")) {
             QString apiEndpoint = "http://localhost:8080" + path;
             InfoMsg->append("Forwarding API GET request to: " + apiEndpoint);
 
             QNetworkReply* reply = networkHandler->sendGetRequest(apiEndpoint);
-            if (requestLine.startsWith("GET")) {
-                reply = networkHandler->sendGetRequest(apiEndpoint);
-            }
+            //if (requestLine.startsWith("GET")) {
+                //reply = networkHandler->sendGetRequest(apiEndpoint);
+                //return;
+            //}
             if (reply) {
                 // QNetworkReply*를 키로 현재 클라이언트 소켓을 저장
                 pendingApiReplies.insert(reply, socket);

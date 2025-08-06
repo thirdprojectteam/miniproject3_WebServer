@@ -9,12 +9,12 @@
 #include <QUrlQuery>
 #include <QTcpServer>
 
-#include "datamanager.h"
+#include "clientdb.h"
 class APIServer : public QObject
 {
     Q_OBJECT
 public:
-    explicit APIServer(DataManager &manager,QObject *parent = nullptr);
+    explicit APIServer(QObject *parent = nullptr);
     ~APIServer();
 
     bool start(int port = 8080);
@@ -25,12 +25,12 @@ signals:
 
 private:
     // API 엔드포인트 설정
-    void setupEndpoints();
+    void setupRoutes();
 
     QHttpServer* httpServer;
     QTcpServer tcpServer; //QTcpServer를 사용하여 바인딩
-    DataManager& dbManager;
     bool isRunning;
+    ClientDB clientdb;
 };
 
 #endif // APISERVER_H

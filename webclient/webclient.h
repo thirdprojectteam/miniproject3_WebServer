@@ -28,7 +28,7 @@ private slots:
 private:
     Ui::webclient *ui;
     QNetworkAccessManager *networkManager; // 네트워크 요청을 관리하는 객체
-    const QString SERVER_URL = "http://127.0.0.1:8081/api/users"; // 웹서버의 API 엔드포인트
+    const QString SERVER_URL = "http://127.0.0.1:8081/client/clientdb"; // 웹서버의 API 엔드포인트
     // 참고: 웹서버의 포트가 다르면 여기를 수정하세요 (예: 8080)
 };
 #endif // WEBCLIENT_H

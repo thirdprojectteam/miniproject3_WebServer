@@ -1,3 +1,9 @@
 #include "endpoints.h"
 
-EndPoints::EndPoints() {}
+EndPoints::EndPoints(QObject *parent):QObject(parent)
+{}
+
+EndPoints::~EndPoints()
+{
+
+}

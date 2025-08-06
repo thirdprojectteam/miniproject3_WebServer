@@ -2,11 +2,12 @@
 #define CLIENTDB_H
 
 #include <database.h>
-
+#include <QSqlDatabase>
 class ClientDB : public DataBase
 {
 public:
-    ClientDB(QSqlDatabase &Dm,QObject *parent = nullptr);
+    ClientDB();
+    ~ClientDB();
     //출력
     QJsonArray getAll() override;
     QJsonObject getById(int id) override;

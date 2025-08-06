@@ -1,10 +1,8 @@
 #include "database.h"
 #include <QJsonObject>
 #include <QSqlQuery>
-DataBase::DataBase(QSqlDatabase &Dm, QObject *parent)
-    :m_db(Dm)
+DataBase::DataBase(QObject *parent) : QObject(parent)
 {
-
 }
 
 QString DataBase::buildUpdateQuery(const QString &table,int id, const QJsonObject &data)

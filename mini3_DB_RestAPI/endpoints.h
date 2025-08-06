@@ -7,7 +7,10 @@ class EndPoints : public QObject
 {
     Q_OBJECT
 public:
-    EndPoints();
+    EndPoints(QObject *parent = nullptr);
+    ~EndPoints();
+
+private:
 };
 
 #endif // ENDPOINTS_H

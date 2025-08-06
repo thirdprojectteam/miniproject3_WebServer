@@ -9,7 +9,7 @@ class DataBase: public QObject
 {
     Q_OBJECT
 public:
-    explicit DataBase(QSqlDatabase &Dm, QObject *parent = nullptr);
+    explicit DataBase(QObject *parent = nullptr);
     //출력
     virtual QJsonArray getAll() = 0;
     virtual QJsonObject getById(int id)= 0;
@@ -22,7 +22,6 @@ public:
 protected:
     QString       TableName;
     qint64        TotalSize;
-    QSqlDatabase& m_db;
     QSqlError     m_lastError;
 
 signals:

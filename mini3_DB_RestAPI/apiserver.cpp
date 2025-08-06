@@ -1,8 +1,12 @@
 #include "apiserver.h"
 
-APIServer::APIServer(DataManager &manager,QObject *parent)
+
+#include <QSqlDatabase>
+#include <QtConcurrent/QtConcurrent>
+#include <QFuture>
+APIServer::APIServer(QObject *parent)
     : QObject(parent), httpServer(new QHttpServer(this)),
-    tcpServer(new QTcpServer(this)),dbManager(manager), isRunning(false)
+    tcpServer(new QTcpServer(this)), isRunning(false)
 {}
 
 APIServer::~APIServer()
@@ -17,13 +21,7 @@ bool APIServer::start(int port)
         return false;
     }
 
-    // 데이터베이스 연결 확인
-    if (!dbManager.connect("192.168.2.57", "bank", "master", "1107", 3306)) {
-        emit errorOccurred("데이터베이스 연결 실패. 서버를 시작할 수 없습니다.");
-        return false;
-    }
-
-    setupEndpoints(); // API 엔드포인트 설정
+    setupRoutes(); // API 엔드포인트 설정
 
     bool success = false;
     quint16 serverPort = 0;
@@ -57,39 +55,29 @@ void APIServer::stop()
         tcpServer.close();
         delete httpServer;// 서버 리스닝 중지
         httpServer = new QHttpServer(this);
-        dbManager.disconnect(); // 데이터베이스 연결 해제
         isRunning = false;
         //emit serverStopped();
         qDebug() << "API 서버가 중지되었습니다.";
     }
 }
 
-void APIServer::setupEndpoints()
+void APIServer::setupRoutes()
 {
-    // httpServer->route("/api/users", QHttpServerRequest::Method::Get, [](const QHttpServerRequest &req)
-    //                 {
-    //                  // 1. 메서드는 route에서 이미 확인됨 (POST)
-
-    //                  // 2. 헤더 확인
-    //                  QString contentType = QString::fromUtf8(req.headers().value("Content-Type"));
-    //                  qDebug() << "Content-Type:" << contentType;
-
-    //                  // 3. 바디 확인
-    //                  QByteArray body = req.body();
-    //                  qDebug() << "Body:" << body;
-
-    //                  return QHttpServerResponse("application/json", "{\"status\":\"ok\"}");
-    //              });
-    QJsonObject response;
-    response["success"] = "success";
-    response["message"] = "message";
-
-    httpServer->route("/api/users", [this, response]() {
-        qDebug() << "받아랑";
-
-        return QHttpServerResponse(
-            "application/json",
-            QJsonDocument(response).toJson(QJsonDocument::Compact));
-    });
-
+    httpServer->route(
+        "/client/<arg>",
+        QHttpServerRequest::Method::Get,
+        [this](const QString &table) -> QFuture<QHttpServerResponse>
+        {
+            return QtConcurrent::run([this, table]() {
+                QJsonDocument responseDoc;
+                if (table == "clientdb") {
+                    QJsonArray list = clientdb.getAll();
+                    responseDoc = QJsonDocument(list);
+                }
+                return QHttpServerResponse("application/json",
+                                           responseDoc.toJson());
+            });
+        }
+        );
 }
+

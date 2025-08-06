@@ -6,7 +6,7 @@
 class AccountDB : public DataBase
 {
 public:
-    explicit AccountDB(QSqlDatabase &Dm, QObject *parent = nullptr);
+    AccountDB();
 };
 
 #endif // ACCOUNTDB_H

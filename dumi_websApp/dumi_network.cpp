@@ -41,7 +41,7 @@ void NetworkHandler::onGetReplyFinished(QNetworkReply *reply)
     if (reply->error() == QNetworkReply::NoError) {
         QByteArray responseData = reply->readAll();
         QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
-        if (!jsonDoc.isNull() && jsonDoc.isObject()) {
+        if (!jsonDoc.isNull() && (jsonDoc.isObject() || jsonDoc.isArray())) {
             // getRequestFinished 시그널에 'reply' 객체를 함께 보냅니다.
             emit getRequestFinished(jsonDoc.object(), reply); // 수정됨
         } else {

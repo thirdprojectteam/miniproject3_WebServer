@@ -1,12 +1,20 @@
 #include "clientdb.h"
+#include "datamanager.h"
+
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QSqlQuery>
 #include <QSqlRecord>
-ClientDB::ClientDB(QSqlDatabase &Dm, QObject *parent)
-    :DataBase(Dm,parent)
+#include <QThread>
+
+ClientDB::ClientDB()
 {
     TableName = "clientdb";
+}
+
+ClientDB::~ClientDB()
+{
+
 }
 
 QJsonArray ClientDB::getAll()
@@ -14,24 +22,29 @@ QJsonArray ClientDB::getAll()
     QJsonArray result;
 
     //emit operationCompleted(false, "getAll", m_lastError);
-
-
-    QSqlQuery query;
-    if (query.exec("SELECT * FROM " + TableName)) {
-        while (query.next()) {
-            QJsonObject item;
-            for (int i = 0; i < query.record().count(); i++) {
-                item.insert(query.record().fieldName(i), QJsonValue::fromVariant(query.value(i)));
+    QString connName;
+    connName = QString("conn_%1").arg((quintptr)QThread::currentThreadId());
+    {
+        QSqlQuery query(DataManager::instance().createThreadConnection(connName));
+        if (query.exec("SELECT * FROM " + TableName)) {
+            while (query.next()) {
+                QJsonObject item;
+                for (int i = 0; i < query.record().count(); i++) {
+                    item.insert(query.record().fieldName(i), QJsonValue::fromVariant(query.value(i)));
+                }
+                result.append(item);
             }
-            result.append(item);
+            //emit operationCompleted(true, "getAll");
+        } else {
+            m_lastError = query.lastError();
+            qDebug() << "조회 실패:" << m_lastError.text();
+            //emit operationCompleted(false, "getAll", m_lastError);
         }
-        //emit operationCompleted(true, "getAll");
-    } else {
-        m_lastError = query.lastError();
-        qDebug() << "조회 실패:" << m_lastError.text();
-        //emit operationCompleted(false, "getAll", m_lastError);
+        if(query.isActive())
+            query.finish();
+        query.clear();
     }
-
+    DataManager::instance().closeThreadConnection(connName);
     return result;
 }
 
@@ -60,9 +73,10 @@ QJsonObject ClientDB::getById(int id)
 QJsonObject ClientDB::getByCondition(const QString &cond, const QString &id)
 {
     QJsonObject resultObject; // 결과를 담을 QJsonObject
-
     // 2. SQL 쿼리 준비 (플레이스홀더 사용)
-    QSqlQuery query(m_db); // m_db는 Database 클래스의 QSqlDatabase 멤버 변수입니다.
+    QString connName;
+    connName = QString("conn_%1").arg((quintptr)QThread::currentThreadId());
+    QSqlQuery query(DataManager::instance().createThreadConnection(connName)); // m_db는 Database 클래스의 QSqlDatabase 멤버 변수입니다.
 
     // SQL Injection을 방지하기 위해 플레이스홀더를 사용하는 것이 중요합니다.
     // SELECT * FROM membertbl WHERE memberID = :id_value
