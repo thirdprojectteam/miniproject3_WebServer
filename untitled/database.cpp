@@ -1,5 +1,4 @@
 #include "database.h"
-
 Database::Database(QObject *parent) : QObject(parent), isConnected(false)
 {
 }
@@ -18,6 +17,13 @@ bool Database::connect(const QString &hostname, const QString &dbName,
     m_db.setUserName(username);
     m_db.setPassword(password);
     m_db.setPort(port);
+
+    // m_db.setConnectOptions(
+    //     "SSL_KEY=C:/MySQL/certs/client-key.pem;"
+    //     "SSL_CERT=C:/MySQL/certs/client-cert.pem;"
+    //     "SSL_CA=C:/MySQL/certs/ca.pem;"
+    //     );
+
 
     isConnected = m_db.open();
     if (!isConnected) {
@@ -152,6 +158,52 @@ QJsonObject Database::getByCondition(const QString &table, const QString &header
 
     return resultObject;
 }
+//sql by uid and name
+QJsonObject Database::getByUidAndName(const QString &table, const QString &uid, const QString &name)
+{
+    QJsonObject resultObject;
+
+    // 1. 데이터베이스 연결 상태 확인
+    if (!m_db.isOpen()) {
+        qWarning() << "Database not open. Cannot perform getByUidAndName for table:" << table;
+        return resultObject;
+    }
+
+    // 2. SQL 쿼리 준비 (UID와 name 두 조건)
+    QSqlQuery query(m_db);
+    QString queryString = QString("SELECT budget FROM %1 WHERE UID = :uid_value AND name = :name_value").arg(table);
+
+    if (!query.prepare(queryString)) {
+        qWarning() << "Failed to prepare query for getByUidAndName:" << query.lastError().text();
+        return resultObject;
+    }
+
+    // 3. 플레이스홀더에 값 바인딩
+    query.bindValue(":uid_value", uid);
+    query.bindValue(":name_value", name);
+
+    // 4. 쿼리 실행
+    if (query.exec()) {
+        if (query.next()) {
+            QSqlRecord record = query.record();
+
+            // 레코드의 각 필드를 QJsonObject에 추가 (budget 포함 전체 컬럼)
+            for (int i = 0; i < record.count(); ++i) {
+                QString fieldName = record.fieldName(i);
+                QVariant fieldValue = query.value(i);
+                resultObject[fieldName] = QJsonValue::fromVariant(fieldValue);
+            }
+        } else {
+            qDebug() << "No data found for UID=" << uid << "and name=" << name;
+        }
+    } else {
+        qWarning() << "SQL Error in getByUidAndName for table" << table << ":" << query.lastError().text();
+    }
+
+    return resultObject;
+}
+
+
 //추가된 부분
 bool Database::insert(const QString &table, const QJsonObject &data)
 {
@@ -203,6 +255,155 @@ bool Database::update(const QString &table, int id, const QJsonObject &data)
     emit operationCompleted(true, "update");
     return true;
 }
+//추가된 부분 api update budget
+bool Database::updateBudget(const QString &table, int status, const QJsonObject &data, const QString* budget ){
+    if (!isConnected) {
+        m_lastError = QSqlError("Not connected", "데이터베이스에 연결되지 않았습니다.", QSqlError::ConnectionError);
+        emit operationCompleted(false, "update", m_lastError);
+        return false;
+    }
+    QJsonObject recvdata;
+    if(status==0){//deposit
+        //여기서 data열어서 UID랑 amount랑 name들고옴.
+        if(!data.isEmpty()&&data["data"].isObject()){
+            recvdata = data["data"].toObject();
+        }
+        QString UID = recvdata["UID"].toString();
+        qDebug()<<UID;
+        QString Ruid = "-1";
+        if(UID=="B1457D09"){
+            qDebug()<<"here";
+            Ruid="12345678";
+        }else if(UID=="F3CC65BD"){
+            Ruid="87654321";
+        }else {
+            Ruid="-1";
+        }
+        QString name = recvdata["name"].toString();
+        QString amount = recvdata["amount"].toString();
+        QSqlQuery query(m_db);
+        QString queryString = QString("UPDATE %1 SET budget = budget + :amount WHERE UID = :uid AND name = :name").arg(table);
+        //prepare
+        if (!query.prepare(queryString)) {
+            qWarning() << "Deposit query prepare failed:" << query.lastError().text();
+            return false;
+        }
+        //bind value
+        query.bindValue(":name", name);
+        query.bindValue(":amount", amount);
+        query.bindValue(":uid", Ruid);
+
+        if (!query.exec()) {
+            qWarning() << "Deposit query exec failed:" << query.lastError().text();
+            return false;
+        }
+        if (query.numRowsAffected() == 0) {
+            qDebug() << "Deposit failed No Data" << Ruid;
+            return false;
+        }
+
+        qDebug() << "Deposit success UID:" << UID << "Amount:" << amount;
+        return true;
+    }else if(status==1){//withdraw
+        if(!data.isEmpty()&&data["data"].isObject()){
+            recvdata = data["data"].toObject();
+        }
+        QString UID = recvdata["UID"].toString();
+        QString Ruid = "-1";
+        QString name = recvdata["name"].toString();
+        QString amount = recvdata["amount"].toString();
+        QSqlQuery query(m_db);
+        QString queryString = QString("UPDATE %1 SET budget = budget - :amount WHERE UID = :uid AND name = :name AND budget >= :amount").arg(table);
+        if (!query.prepare(queryString)) {
+            qWarning() << "Failed to prepare query for put:" << query.lastError().text();
+            return false;
+        }
+        if(UID=="B1457D09"){
+            Ruid="12345678";
+        }else if(UID=="F3CC65BD"){
+            Ruid="87654321";
+        }else {
+            Ruid="-1";
+        }
+
+        //bind value
+        query.bindValue(":name", name);
+        query.bindValue(":amount", amount);
+        query.bindValue(":uid", Ruid);
+
+        if (!query.exec()) {
+            qWarning() << "Deposit query exec failed:" << query.lastError().text();
+            return false;
+        }
+        if (query.numRowsAffected() == 0) {
+            qDebug() << "Withdraw failed (Insufficient funds) UID:" << UID;
+            return false;
+        }
+
+        qDebug() << "Withdraw success UID:" << UID << "Amount:" << amount;
+        return true;
+    }else if(status==2){//send
+        if (!m_db.transaction()) {
+            qWarning() << "Failed to start transaction:" << m_db.lastError().text();
+            return false;
+        }
+        if(!data.isEmpty()&&data["data"].isObject()){
+            recvdata = data["data"].toObject();
+        }
+        QString FromUID = recvdata["UID"].toString();
+        QString name = recvdata["name"].toString();
+        QString amount = recvdata["amount"].toString();
+        QString ToUID = recvdata["targetUID"].toString();
+
+        // 1. 출금 (보내는 사람)
+        QSqlQuery withdrawQuery(m_db);
+        QString withdrawStr = QString("UPDATE %1 SET budget = budget - :amount WHERE UID = :uid AND name = :name AND budget >= :amount").arg(table);
+
+        if (!withdrawQuery.prepare(withdrawStr)) {
+            qWarning() << "Withdraw prepare failed:" << withdrawQuery.lastError().text();
+            m_db.rollback();
+            return false;
+        }
+        withdrawQuery.bindValue(":name", name);
+        withdrawQuery.bindValue(":amount", amount);
+        withdrawQuery.bindValue(":uid", FromUID);
+
+        if (!withdrawQuery.exec() || withdrawQuery.numRowsAffected() == 0) {
+            qWarning() << "Withdraw failed (Insufficient funds):" << withdrawQuery.lastError().text();
+            m_db.rollback();
+            return false;
+        }
+
+        // 2. 예금 (받는 사람)
+        QSqlQuery depositQuery(m_db);
+        QString depositStr = QString("UPDATE %1 SET budget = budget + :amount WHERE UID = :uid").arg(table);
+        if (!depositQuery.prepare(depositStr)) {
+            qWarning() << "Deposit prepare failed:" << depositQuery.lastError().text();
+            m_db.rollback();
+            return false;
+        }
+        depositQuery.bindValue(":amount", amount);
+        depositQuery.bindValue(":uid", ToUID);
+
+        if (!depositQuery.exec() || depositQuery.numRowsAffected() == 0) {
+            qWarning() << "Deposit failed (Receiver not found):" << depositQuery.lastError().text();
+            m_db.rollback();
+            return false;
+        }
+
+        // 3. 커밋
+        if (!m_db.commit()) {
+            qWarning() << "Transaction commit failed:" << m_db.lastError().text();
+            m_db.rollback();
+            return false;
+        }
+        return true;
+    } else {
+        qDebug()<<"error came exit";
+        return false;
+    }
+}
+
 
 bool Database::remove(const QString &table, int id)
 {

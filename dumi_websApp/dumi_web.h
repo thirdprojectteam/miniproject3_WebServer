@@ -18,8 +18,7 @@ public:
 private slots:
     void newConnect();
     void readClient();
-    void handleGetResult(const QJsonObject &data, QNetworkReply* reply); // QNetworkReply* 인자 추가
-    void handlePostResult(const QJsonObject &data, QNetworkReply* reply); // QNetworkReply* 인자 추가
+    void handleResult(const QJsonObject &data, QNetworkReply* reply); // QNetworkReply* 인자 추가
     void handleRequestError(const QString &errorString, QNetworkReply* reply); // QNetworkReply* 인자 추가
 
 private:

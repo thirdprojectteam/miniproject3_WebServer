@@ -2,7 +2,7 @@
 #include <QJsonParseError>
 #include <QVariant>
 #include <QDebug>
-
+#include <QUrlQuery> // 쿼리 처리용.
 
 ApiServer::ApiServer(Database* db, QObject *parent)
     : QObject(parent), m_server(new QHttpServer(this)),
@@ -23,7 +23,7 @@ bool ApiServer::start(int port)
     }
 
     // 데이터베이스 연결 확인
-    if (!m_database || !m_database->connect("127.0.0.1", "shopdb", "manager", "1234", 3306)) {
+    if (!m_database || !m_database->connect("127.0.0.1", "bank", "manager", "1234", 3306)) {
         emit errorOccurred("데이터베이스 연결 실패. 서버를 시작할 수 없습니다.");
         return false;
     }
@@ -81,8 +81,25 @@ void ApiServer::setupEndpoints()
     m_server->route("*", [](const QHttpServerRequest &) {
         return QHttpServerResponse("text/plain", QByteArrayLiteral("404 Not Found"), QHttpServerResponse::StatusCode::NotFound);
     });
+
+
     //users get
-    m_server->route("/api/users", QHttpServerRequest::Method::Get,[this](const QHttpServerRequest &request) { // [this] 캡처를 통해 ApiServer 멤버(m_database)에 접근
+    m_server->route("/api/atm", QHttpServerRequest::Method::Get,[this](const QHttpServerRequest &request) { // [this] 캡처를 통해 ApiServer 멤버(m_database)에 접근
+        //query문 받기.
+        QUrlQuery query(request.url());
+        QString uid = query.queryItemValue("uid");
+        QString name = query.queryItemValue("name");
+        QString Ruid;
+        if(uid=="B1457D09"){
+            Ruid="12345678";
+        }else if(uid=="F3CC65BD"){
+            Ruid="87654321";
+        }else {
+            Ruid="-1";
+        }
+
+        qDebug() << "Received Query Parameters: uid=" << Ruid << ", name=" << name;
+
         // 데이터베이스 연결 확인
         if (!m_database || !m_database->isConnected) {
             qWarning() << "Database not connected for /api/users request.";
@@ -91,32 +108,31 @@ void ApiServer::setupEndpoints()
                                        QHttpServerResponse::StatusCode::InternalServerError);
         }
 
-        // 'membertbl' 테이블에서 'memberID'가 "Edward"인 데이터 조회
-        // 가정: m_database에 getByCondition(tableName, conditionColumn, conditionValue) 같은 메소드가 있다고 가정합니다.
-        // 이 메소드는 QJsonObject를 반환하거나 QJsonArray를 반환할 수 있습니다.
-        // 여기서는 단일 'Edward' 항목을 가정하고 QJsonObject를 반환하도록 합니다.
-        QJsonObject userData = m_database->getByCondition("membertbl", "memberID", "Edward");
+        //UID와 name이 일치하는 데이터를 가져옴.
+        QJsonObject userData = m_database->getByUidAndName("account", Ruid, name);
 
         if (userData.isEmpty()) {
             if (m_database->lastError().isValid()) { // 조회 중 SQL 에러 발생 시
                 qWarning() << "SQL Error retrieving Edward from membertbl:" << m_database->lastError().text();
                 return QHttpServerResponse("application/json",
-                                           QJsonDocument(createResponse(false, "데이터 조회 실패: " + m_database->lastError().text(), QJsonObject{{"code", 500}})).toJson(QJsonDocument::Compact),
+                                           QJsonDocument(createResponse(false, "Get api 처리실패:" + m_database->lastError().text(), QJsonObject{{"code", 500}})).toJson(QJsonDocument::Compact),
                                            QHttpServerResponse::StatusCode::InternalServerError);
-            } else { // 'Edward'를 찾을 수 없을 때
+            } else { // 데이터를 찾을 수 없을때
                 qDebug() << "Member 'Edward' not found in membertbl.";
                 return QHttpServerResponse("application/json",
-                                           QJsonDocument(createResponse(false, "사용자 'Edward'를 찾을 수 없습니다.", QJsonObject{{"code", 404}})).toJson(QJsonDocument::Compact),
+                                           QJsonDocument(createResponse(false, "Get api 처리실패:", QJsonObject{{"code", 404}})).toJson(QJsonDocument::Compact),
                                            QHttpServerResponse::StatusCode::NotFound);
             }
         }
 
-            // 성공적으로 데이터를 찾았을 때 JSON 응답 반환
+        // 성공적으로 데이터를 찾았을 때 JSON 응답 반환
         return QHttpServerResponse("application/json",
-                                    QJsonDocument(createResponse(true, "사용자 'Edward' 정보 조회 성공", userData)).toJson(QJsonDocument::Compact));
+                                    QJsonDocument(createResponse(true, "Get api 도착:", userData)).toJson(QJsonDocument::Compact));
     });
+
+
     //users post 건드린부분
-    m_server->route("/api/users", QHttpServerRequest::Method::Post,[this](const QHttpServerRequest &request){
+    m_server->route("/api/atm", QHttpServerRequest::Method::Post,[this](const QHttpServerRequest &request){
         QJsonParseError parseError;
         QByteArray reqbody = request.body();
         qDebug()<<reqbody;
@@ -149,6 +165,55 @@ void ApiServer::setupEndpoints()
         } else {
             return QHttpServerResponse("application/json",
                                        QJsonDocument(createResponse(true, "사용자 추가 성공", QJsonObject{{"memberTable", "membertbl"}, {"Data", postData}})).toJson(QJsonDocument::Compact),
+                                       QHttpServerResponse::StatusCode::Ok);
+        }
+    });
+
+    //put -> update
+    m_server->route("/api/atm", QHttpServerRequest::Method::Put,[this](const QHttpServerRequest &request){
+        QJsonParseError parseError;
+        QByteArray reqbody = request.body();
+        qDebug()<<reqbody;
+        QJsonDocument doc = QJsonDocument::fromJson(request.body(), &parseError);
+        if (parseError.error != QJsonParseError::NoError) {
+            qWarning() << "Failed to parse JSON body:" << parseError.errorString();
+            return QHttpServerResponse("application/json",
+                                       QJsonDocument(createResponse(false, "잘못된 JSON 형식입니다.", QJsonObject{{"code", 400}})).toJson(QJsonDocument::Compact),
+                                       QHttpServerResponse::StatusCode::BadRequest);
+        }
+
+        QJsonObject putData = doc.object();
+        auto data = putData["data"].toObject();
+
+        //디버그 문구
+        qDebug() << "put Data received:"<<putData;
+        for (auto it = data.begin(); it != data.end(); ++it) {
+            qDebug() << it.key() << ":" << it.value().toVariant();
+        }
+
+        //put은 동작이 3개
+        bool insertSuccess=0;
+        QString budget="";
+        QString action = data["action"].toString();
+        if(action=="Deposit"){
+            //덧셈
+            insertSuccess = m_database->updateBudget("account", 0,putData,&budget);
+        }else if(action == "Withdraw"){
+            //뺄셈
+            insertSuccess = m_database->updateBudget("account", 1,putData,&budget);
+        }else if(action == "Send"){
+            //put 2개 동시.
+            insertSuccess = m_database->updateBudget("account", 2,putData,&budget);
+        }
+
+        if (!insertSuccess) {
+            qWarning() << "Failed to insert user:" << m_database->lastError().text();
+            return QHttpServerResponse("application/json",
+                                       QJsonDocument(createResponse(false, "사용자 추가 실패: " + m_database->lastError().text(), QJsonObject{{"code", 500}})).toJson(QJsonDocument::Compact),
+                                       QHttpServerResponse::StatusCode::InternalServerError);
+        } else {
+            return QHttpServerResponse("application/json",
+                                       QJsonDocument(createResponse(true, "동작 성공", QJsonObject{{"Data", budget}})).toJson(QJsonDocument::Compact),
                                        QHttpServerResponse::StatusCode::Ok);
         }
     });

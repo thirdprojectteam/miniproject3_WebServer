@@ -29,8 +29,10 @@ public:
     QJsonArray getAll(const QString &table);
     QJsonObject getById(const QString &table, int id);
     QJsonObject getByCondition(const QString &table,const QString &header,const QString &id);
+    QJsonObject getByUidAndName(const QString &table, const QString &uid, const QString &name);
     bool insert(const QString &table, const QJsonObject &data);
     bool update(const QString &table, int id, const QJsonObject &data);
+    bool updateBudget(const QString &table, int status, const QJsonObject &data, const QString* budget );
     bool remove(const QString &table, int id);
 
     // 에러 처리
