@@ -82,7 +82,6 @@ void ApiServer::setupEndpoints()
         return QHttpServerResponse("text/plain", QByteArrayLiteral("404 Not Found"), QHttpServerResponse::StatusCode::NotFound);
     });
 
-
     //users get
     m_server->route("/api/atm", QHttpServerRequest::Method::Get,[this](const QHttpServerRequest &request) { // [this] 캡처를 통해 ApiServer 멤버(m_database)에 접근
         //query문 받기.
@@ -130,7 +129,6 @@ void ApiServer::setupEndpoints()
                                     QJsonDocument(createResponse(true, "Get api 도착:", userData)).toJson(QJsonDocument::Compact));
     });
 
-
     //users post 건드린부분
     m_server->route("/api/atm", QHttpServerRequest::Method::Post,[this](const QHttpServerRequest &request){
         QJsonParseError parseError;
@@ -153,9 +151,8 @@ void ApiServer::setupEndpoints()
             qDebug() << it.key() << ":" << it.value().toVariant();
         }
 
-        //tablename, jsonobjectfile
-        //tablename은 membertable로 따로 보내줘야할듯.
-        bool insertSuccess = m_database->insert("membertbl", data);
+        //query
+        bool insertSuccess = m_database->insertSensorLog("sensorlog", data);
 
         if (!insertSuccess) {
             qWarning() << "Failed to insert user:" << m_database->lastError().text();
@@ -164,7 +161,7 @@ void ApiServer::setupEndpoints()
                                        QHttpServerResponse::StatusCode::InternalServerError);
         } else {
             return QHttpServerResponse("application/json",
-                                       QJsonDocument(createResponse(true, "사용자 추가 성공", QJsonObject{{"memberTable", "membertbl"}, {"Data", postData}})).toJson(QJsonDocument::Compact),
+                                       QJsonDocument(createResponse(true, "사용자 추가 성공", QJsonObject{{"memberTable", "sensorlog"}, {"code",200}})).toJson(QJsonDocument::Compact),
                                        QHttpServerResponse::StatusCode::Ok);
         }
     });

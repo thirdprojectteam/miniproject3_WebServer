@@ -158,7 +158,8 @@ QJsonObject Database::getByCondition(const QString &table, const QString &header
 
     return resultObject;
 }
-//sql by uid and name
+
+//api sql by uid and name
 QJsonObject Database::getByUidAndName(const QString &table, const QString &uid, const QString &name)
 {
     QJsonObject resultObject;
@@ -203,8 +204,6 @@ QJsonObject Database::getByUidAndName(const QString &table, const QString &uid, 
     return resultObject;
 }
 
-
-//추가된 부분
 bool Database::insert(const QString &table, const QJsonObject &data)
 {
     if (!isConnected) {
@@ -228,6 +227,49 @@ bool Database::insert(const QString &table, const QJsonObject &data)
 
     emit operationCompleted(true, "insert");
     return true;
+}
+
+// api insert문 -> 로그데이터 넣기
+bool Database::insertSensorLog(const QString& table, const QJsonObject &data){
+    // 1. 데이터베이스 연결 상태 확인
+    if (!m_db.isOpen()) {
+        qWarning() << "Database not open. Cannot perform getByUidAndName for table:" << table;
+        return false;
+    }
+
+    QString date = data["time"].toString();
+    QString clientName = data["clientName"].toString();
+    QString Sensor;
+    switch(data["SensorType"].toInt()){
+    case 0:
+        Sensor="RFID";
+        break;
+    case 1:
+        Sensor="UltraSound";
+        break;
+    default:
+        Sensor="Undefined";
+    }
+
+    // 2. SQL 쿼리 준비
+    QSqlQuery query(m_db);
+    QString queryString =QString("INSERT INTO %1 (time, clientName, sensor) "
+                                  "VALUES (:time, :clientName, :sensor)").arg(table);
+
+    if (!query.prepare(queryString)) {
+        qWarning() << "Failed to prepare query for getByUidAndName:" << query.lastError().text();
+        return false;
+    }
+    query.bindValue(":time", date);
+    query.bindValue(":clientName", clientName);
+    query.bindValue(":sensor", Sensor);
+    if (!query.exec()) {
+        qDebug() << "Insert failed:" << query.lastError().text();
+        return false;
+    } else {
+        qDebug() << "Insert success!";
+        return true;
+    }
 }
 
 bool Database::update(const QString &table, int id, const QJsonObject &data)
