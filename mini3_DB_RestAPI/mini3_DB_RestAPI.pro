@@ -10,6 +10,8 @@ CONFIG += c++17
 
 SOURCES += \
     accountdb.cpp \
+    announcedb.cpp \
+    announcelogdb.cpp \
     apiserver.cpp \
     clientdb.cpp \
     database.cpp \
@@ -21,6 +23,8 @@ SOURCES += \
 
 HEADERS += \
     accountdb.h \
+    announcedb.h \
+    announcelogdb.h \
     apiserver.h \
     clientdb.h \
     database.h \

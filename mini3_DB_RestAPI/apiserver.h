@@ -10,6 +10,9 @@
 #include <QTcpServer>
 
 #include "clientdb.h"
+#include "accountdb.h"
+#include "announcedb.h"
+#include "announcelogdb.h"
 #include "endpoints.h"
 #include "responses.h"
 
@@ -30,12 +33,15 @@ private:
     // API 엔드포인트 설정
     void setupRoutes();
 
-    QHttpServer* httpServer;
-    QTcpServer tcpServer; //QTcpServer를 사용하여 바인딩
-    bool isRunning;
-    ClientDB clientdb;
-    EndPoints endpoints;
-    Responses response;
+    QHttpServer*  httpServer;
+    QTcpServer    tcpServer; //QTcpServer를 사용하여 바인딩
+    bool          isRunning;
+    ClientDB      clientdb;
+    AccountDB     accdb;
+    AnnounceDB    anndb;
+    AnnounceLogDB annlogdb;
+    EndPoints     endpoints;
+    Responses     response;
 };
 
 #endif // APISERVER_H

@@ -17,6 +17,9 @@ public:
 
     // table 이름으로 QHttpServerResponse 생성
     QHttpServerResponse buildResponse(const QString &table) const;
+    QHttpServerResponse buildPostResponse(const QString &table, const bool &isPost) const;
+    // post
+    bool InsertSuccess(const QHttpServerRequest &request,const QString &table);
 
 private:
     QMap<QString, DataBase*> dbMap;

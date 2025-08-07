@@ -1,13 +1,13 @@
-#ifndef ACCOUNTDB_H
-#define ACCOUNTDB_H
+#ifndef ANNOUNCEDB_H
+#define ANNOUNCEDB_H
 
 #include "database.h"
 
-class AccountDB : public DataBase
+class AnnounceDB : public DataBase
 {
 public:
-    AccountDB();
-    ~AccountDB();
+    AnnounceDB();
+    ~AnnounceDB();
     //출력
     QJsonArray getAll() override;
     QJsonObject getById(int id) override;
@@ -23,4 +23,4 @@ private:
     void bindJsonToQuery(QSqlQuery &query, const QJsonObject &data) override;
 };
 
-#endif // ACCOUNTDB_H
+#endif // ANNOUNCEDB_H

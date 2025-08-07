@@ -9,6 +9,9 @@ APIServer::APIServer(QObject *parent)
 {
     // 1) Endpoints에 DB 객체 등록
     endpoints.registerDb("clientdb", &clientdb);
+    endpoints.registerDb("accountdb",&accdb);
+    endpoints.registerDb("announcedb",&anndb);
+    endpoints.registerDb("announcelogdb",&annlogdb);
 }
 
 APIServer::~APIServer()
@@ -63,7 +66,13 @@ void APIServer::stop()
 
 void APIServer::setupRoutes()
 {
-    httpServer->route("/client/<arg>",QHttpServerRequest::Method::Get,[this](const QString &table) -> QFuture<QHttpServerResponse>{
+    httpServer->route("/client/<arg>",\
+    QHttpServerRequest::Method::Get,[this](const QString &table) -> QFuture<QHttpServerResponse>{
         return response.asyncResponse(table); });
+
+    httpServer->route("/client/<arg>",\
+    QHttpServerRequest::Method::Post,[this](const QString &table,const QHttpServerRequest &request) -> QFuture<QHttpServerResponse>{
+        bool isInsert = endpoints.InsertSuccess(request,table);
+        return response.asyncPostResponse(table,isInsert); });
 }
 

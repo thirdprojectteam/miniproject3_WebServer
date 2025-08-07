@@ -20,13 +20,20 @@ ClientDB::~ClientDB()
 QJsonArray ClientDB::getAll()
 {
     QJsonArray result;
-
-    //emit operationCompleted(false, "getAll", m_lastError);
+    QString sql = QString(
+                      "SELECT c.*, "
+                      "CASE WHEN EXISTS ("
+                      "  SELECT 1 "
+                      "  FROM accountdb AS a "
+                      "  WHERE a.client_id = c.id"
+                      ") THEN 1 ELSE 0 END AS hasAccount "
+                      "FROM %1 AS c"
+                      ).arg(TableName);
     QString connName;
     connName = QString("conn_%1").arg((quintptr)QThread::currentThreadId());
     {
         QSqlQuery query(DataManager::instance().createThreadConnection(connName));
-        if (query.exec("SELECT * FROM " + TableName)) {
+        if (query.exec(sql)) {
             while (query.next()) {
                 QJsonObject item;
                 for (int i = 0; i < query.record().count(); i++) {

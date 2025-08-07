@@ -1,22 +1,22 @@
-#include "accountdb.h"
+#include "announcelogdb.h"
 #include "datamanager.h"
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QThread>
 
-AccountDB::AccountDB()
+AnnounceLogDB::AnnounceLogDB()
 {
-    TableName = "accountdb";
+    TableName = "announcelogdb";
 }
 
-AccountDB::~AccountDB()
+AnnounceLogDB::~AnnounceLogDB()
 {
 
 }
 
-QJsonArray AccountDB::getAll()
+QJsonArray AnnounceLogDB::getAll()
 {
-    qDebug() << "AccountDB getAll start";
+    qDebug() << "AnnounceLogDB getAll start";
     QJsonArray result;
     QString sql = "SELECT * FROM " + TableName;
     QString connName;
@@ -45,7 +45,7 @@ QJsonArray AccountDB::getAll()
     return result;
 }
 
-QJsonObject AccountDB::getById(int id)
+QJsonObject AnnounceLogDB::getById(int id)
 {
     QJsonObject result;
 
@@ -67,7 +67,7 @@ QJsonObject AccountDB::getById(int id)
     return result;
 }
 
-QJsonObject AccountDB::getByCondition(const QString &cond, const QString &id)
+QJsonObject AnnounceLogDB::getByCondition(const QString &cond, const QString &id)
 {
     QJsonObject resultObject; // 결과를 담을 QJsonObject
     // 2. SQL 쿼리 준비 (플레이스홀더 사용)
@@ -115,7 +115,7 @@ QJsonObject AccountDB::getByCondition(const QString &cond, const QString &id)
     return resultObject;
 }
 
-bool AccountDB::insert(const QJsonObject &data)
+bool AnnounceLogDB::insert(const QJsonObject &data)
 {
     QString connName;
     connName = QString("conn_%1").arg((quintptr)QThread::currentThreadId());
@@ -136,7 +136,7 @@ bool AccountDB::insert(const QJsonObject &data)
     return true;
 }
 
-bool AccountDB::update(int id, const QJsonObject &data)
+bool AnnounceLogDB::update(int id, const QJsonObject &data)
 {
     QString sql = buildUpdateQuery(TableName, id, data);
     QSqlQuery query;
@@ -156,7 +156,7 @@ bool AccountDB::update(int id, const QJsonObject &data)
     return true;
 }
 
-bool AccountDB::remove(int id)
+bool AnnounceLogDB::remove(int id)
 {
     QSqlQuery query;
     query.prepare("DELETE FROM " + TableName + " WHERE id = :id");
@@ -173,7 +173,7 @@ bool AccountDB::remove(int id)
     return true;
 }
 
-QString AccountDB::buildUpdateQuery(const QString &table, int id, const QJsonObject &data)
+QString AnnounceLogDB::buildUpdateQuery(const QString &table, int id, const QJsonObject &data)
 {
     QStringList setStatements;
 
@@ -186,7 +186,7 @@ QString AccountDB::buildUpdateQuery(const QString &table, int id, const QJsonObj
         .arg(setStatements.join(", "));
 }
 
-QString AccountDB::buildInsertQuery(const QString &table, const QJsonObject &data)
+QString AnnounceLogDB::buildInsertQuery(const QString &table, const QJsonObject &data)
 {
     QStringList fields;
     QStringList placeholders;
@@ -202,7 +202,7 @@ QString AccountDB::buildInsertQuery(const QString &table, const QJsonObject &dat
         .arg(placeholders.join(", "));
 }
 
-void AccountDB::bindJsonToQuery(QSqlQuery &query, const QJsonObject &data)
+void AnnounceLogDB::bindJsonToQuery(QSqlQuery &query, const QJsonObject &data)
 {
     for (auto it = data.constBegin(); it != data.constEnd(); ++it) {
         QString placeholder = ":" + it.key();
@@ -210,3 +210,4 @@ void AccountDB::bindJsonToQuery(QSqlQuery &query, const QJsonObject &data)
         query.bindValue(placeholder, value);
     }
 }
+
