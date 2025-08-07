@@ -14,20 +14,25 @@ class NetworkHandler : public QObject
 public:
     explicit NetworkHandler(QObject *parent = nullptr);
     ~NetworkHandler();
-
+    //http Rest
     QNetworkReply* sendGetRequest(const QString &endpoint);
     QNetworkReply* sendPostRequest(const QString &endpoint, const QByteArray &data);
     QNetworkReply* sendPutRequest(const QString &endpoint, const QByteArray &data);
 
 signals:
-    // -- 이 부분 시그널에 QNetworkReply* 인자를 추가합니다 --
+    //http Rest
     void requestFinished(const QJsonObject &data, QNetworkReply* reply);
     void requestFailed(const QString &errorString, QNetworkReply* reply);
+
 private slots:
+    //http Rest
     void onReplyFinished(QNetworkReply *reply);
 
+
 private:
+    //http Rest
     QNetworkAccessManager *manager;
+
 };
 
 #endif // DUMI_NETWORK_H

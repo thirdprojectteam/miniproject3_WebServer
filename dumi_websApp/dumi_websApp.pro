@@ -1,4 +1,4 @@
-QT += core network httpserver
+QT += core network httpserver websockets
 QT -= gui
 
 CONFIG += c++17 console

@@ -34,6 +34,7 @@ dumi_web::dumi_web(QWidget *parent) : QWidget(parent)
     vlayout->addStretch(1);
     vlayout->addWidget(InfoMsg);
 
+    //Http Rest Server
     tcpServer = new QTcpServer(this);
     connect(tcpServer, &QTcpServer::newConnection, this, &dumi_web::newConnect);
 
@@ -60,6 +61,61 @@ dumi_web::dumi_web(QWidget *parent) : QWidget(parent)
                             .arg(tcpServer->serverPort()));
     }
 
+    //WebSocket server
+    //WebSocketServer 연결
+    wsServer = new QWebSocketServer(QStringLiteral("Chat Server"),
+                                    QWebSocketServer::NonSecureMode,
+                                    this);
+
+    int wsPort = 9000;
+    if (wsServer->listen(QHostAddress::Any, wsPort)) {
+        InfoMsg->append(tr("WebSocket server running on port %1").arg(wsPort));
+
+        connect(wsServer, &QWebSocketServer::newConnection, this, [this]() {
+            QWebSocket* clientSocket = wsServer->nextPendingConnection();
+            chatClients.append(clientSocket);
+
+            InfoMsg->append("New WebSocket Chat Client Connected.");
+
+            // 첫 메시지는 닉네임으로 처리
+            connect(clientSocket, &QWebSocket::textMessageReceived, this,
+                    [this, clientSocket](const QString &message) {
+
+                        if (!clientNames.contains(clientSocket)) {
+                            // 아직 등록되지 않은 클라이언트 → 첫 메시지는 닉네임
+                            clientNames[clientSocket] = message;
+                            InfoMsg->append(QString("Client registered with nickname: %1").arg(message));
+                            clientSocket->sendTextMessage(QString("Welcome, %1!").arg(message));
+                            return;
+                        }
+
+                        // 닉네임 등록된 클라이언트 → 메시지 브로드캐스트
+                        QString senderName = clientNames.value(clientSocket, "Unknown");
+                        QString fullMessage = QString("%1: %2").arg(senderName, message);
+
+                        InfoMsg->append("Broadcasting: " + fullMessage);
+
+                        for (QWebSocket* client : chatClients) {
+                            if (client != clientSocket && client->isValid()) {
+                                client->sendTextMessage(fullMessage);
+                            }
+                        }
+                    });
+
+            // 연결 해제
+            connect(clientSocket, &QWebSocket::disconnected, this, [this, clientSocket]() {
+                QString name = clientNames.value(clientSocket, "Unknown");
+                InfoMsg->append(QString("Client disconnected: %1").arg(name));
+
+                chatClients.removeAll(clientSocket);
+                clientNames.remove(clientSocket);
+                clientSocket->deleteLater();
+            });
+        });
+    } else {
+        InfoMsg->append("Failed to start WebSocket server.");
+        qApp->quit();
+    }
 }
 
 dumi_web::~dumi_web(){
