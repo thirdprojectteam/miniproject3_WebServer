@@ -203,7 +203,7 @@ void dumi_web::readClient()
     // HTTP 요청 파싱 (간단한 GET 예시)
     if (requestLine.startsWith("GET")) {
         // 특정 경로에 대해 RESTful API 요청 처리
-        if (path.startsWith("/client/")) {
+        if (path.startsWith("/client/")||path.startsWith("/api/atm")) {
             QString apiEndpoint = "http://localhost:8080" + path;
             InfoMsg->append("Forwarding API GET request to: " + apiEndpoint);
 

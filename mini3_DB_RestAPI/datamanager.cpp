@@ -50,6 +50,11 @@ void DataManager::closeThreadConnection(QString &connName)
     }
 }
 
+QSqlDatabase DataManager::getDB()
+{
+    return this->m_db;
+}
+
 bool DataManager::connect(const QString &hostname, const QString &dbName, const QString &username, const QString &password, int port)
 {
     this->h_n = hostname;

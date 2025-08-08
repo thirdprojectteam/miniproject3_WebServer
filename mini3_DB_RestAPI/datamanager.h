@@ -27,6 +27,7 @@ public:
     QSqlDatabase createThreadConnection(QString &connName);
     void closeThreadConnection(QString &connName);
     QString getConnectionName();
+    QSqlDatabase getDB();
 
 private:
     DataManager() = default;

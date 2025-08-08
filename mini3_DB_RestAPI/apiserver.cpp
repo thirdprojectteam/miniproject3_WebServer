@@ -67,17 +67,47 @@ void APIServer::stop()
 
 void APIServer::setupRoutes()
 {
+    // ----- webclient GET
     httpServer->route("/client/<arg>",\
     QHttpServerRequest::Method::Get,[this](const QString &table) -> QFuture<QHttpServerResponse>{
         return response.asyncResponse(table); });
 
+    // ----- webclient GET LATEST
     httpServer->route("/client/<arg>/latest",\
     QHttpServerRequest::Method::Get,[this](const QString &table) -> QFuture<QHttpServerResponse>{
         return response.asyncResponse(table); });
 
+    // ----- webclient POST
     httpServer->route("/client/<arg>",\
     QHttpServerRequest::Method::Post,[this](const QString &table,const QHttpServerRequest &request) -> QFuture<QHttpServerResponse>{
         bool isInsert = endpoints.InsertSuccess(request,table);
         return response.asyncPostResponse(table,isInsert); });
+
+    // ----- raspberry pi GET
+    httpServer->route("/api/atm", QHttpServerRequest::Method::Get,[this](const QHttpServerRequest &request) { // [this] 캡처를 통해 ApiServer 멤버(m_database)에 접근
+        //query문 받기.
+        QUrlQuery query(request.url());
+        QString uid = query.queryItemValue("uid");
+        QString name = query.queryItemValue("name");
+        QString Ruid;
+        if(uid=="B1457D09"){
+            Ruid="12345678";
+        }else if(uid=="F3CC65BD"){
+            Ruid="87654321";
+        }else {
+            Ruid="-1";
+        }
+        qDebug() << "Received Query Parameters: uid=" << Ruid << ", name=" << name;
+        return response.asyncResponseWhere("accountdb",Ruid,name);});
+
+    // ----- raspberry pi POST
+    httpServer->route("/api/atm", QHttpServerRequest::Method::Post,[this](const QHttpServerRequest &request){
+        bool isInsert = endpoints.InsertSuccess(request,"atmlogdb");
+        return response.asyncPostResponse("atmlogdb",isInsert);});
+
+    // ----- raspberry pi PUT
+    httpServer->route("/api/atm", QHttpServerRequest::Method::Put,[this](const QHttpServerRequest &request){
+        bool isUpdate = endpoints.UpdateSuccess(request,"accountdb");
+        return response.asyncPostResponse("accountdb",isUpdate);});
 }
 

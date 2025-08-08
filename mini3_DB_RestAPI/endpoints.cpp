@@ -3,13 +3,8 @@
 #include <QHttpServerRequest>
 #include <QJsonObject>
 
-EndPoints::EndPoints()
-{}
-
-EndPoints::~EndPoints()
-{
-
-}
+EndPoints::EndPoints(){}
+EndPoints::~EndPoints(){}
 
 void EndPoints::registerDb(const QString &name, DataBase *db)
 {
@@ -30,6 +25,20 @@ QHttpServerResponse EndPoints::buildResponse(const QString &table) const
     };
 }
 
+QHttpServerResponse EndPoints::buildResponseWhere(const QString &table, QString con1, QString con2) const
+{
+    qDebug() << "EndPoints Where start";
+    QJsonDocument doc;
+    if (auto it = dbMap.find(table); it != dbMap.end()) {
+        doc = QJsonDocument(it.value()->getByCondition(con1,con2));
+        qDebug() << "EndPoints Where data : "<<doc.toJson();
+    }
+    return QHttpServerResponse{
+        "application/json",
+        doc.toJson(QJsonDocument::Compact)
+    };
+}
+
 QHttpServerResponse EndPoints::buildResponseRecent(const QString &table) const
 {
     qDebug() << "EndPoints buildResponseRecent start, table=" << table;
@@ -43,7 +52,6 @@ QHttpServerResponse EndPoints::buildResponseRecent(const QString &table) const
         doc.toJson(QJsonDocument::Compact)
     };
 }
-
 
 QHttpServerResponse EndPoints::buildPostResponse(const QString &table, const bool &isPost) const
 {
@@ -104,4 +112,39 @@ bool EndPoints::InsertSuccess(const QHttpServerRequest &request, const QString &
         insertSuccess = it.value()->insert(data);
     }
     return insertSuccess;
+}
+
+bool EndPoints::UpdateSuccess(const QHttpServerRequest &request, const QString &table)
+{
+    QByteArray reqbody = request.body();
+    qDebug()<<reqbody;
+    QJsonDocument doc = QJsonDocument::fromJson(request.body());
+
+    QJsonObject putData = doc.object();
+    auto data = putData["data"].toObject();
+
+    //디버그 문구
+    qDebug() << "put Data received:"<<putData;
+    for (auto it = data.begin(); it != data.end(); ++it) {
+        qDebug() << it.key() << ":" << it.value().toVariant();
+    }
+    //put은 동작이 3개
+    bool insertSuccess=0;
+    QString action = data["action"].toString();
+    int id = 0;
+    if(action=="Deposit"){
+        //덧셈
+        id = 0;
+    }else if(action == "Withdraw"){
+        //뺄셈
+        id = 1;
+    }else if(action == "Send"){
+        //put 2개 동시.
+        id = 2;
+    }
+    if (auto it = dbMap.find(table); it != dbMap.end()) {
+        insertSuccess = it.value()->update(id,putData);
+    }
+    return insertSuccess;
+
 }

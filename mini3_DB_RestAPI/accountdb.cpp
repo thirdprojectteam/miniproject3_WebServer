@@ -105,9 +105,7 @@ QJsonObject AccountDB::getByCondition(const QString &cond, const QString &id)
 
     // SQL Injection을 방지하기 위해 플레이스홀더를 사용하는 것이 중요합니다.
     // SELECT * FROM membertbl WHERE memberID = :id_value
-    QString queryString = QString("SELECT * FROM %1 WHERE %2 = :id_value")
-                              .arg(TableName)   // 테이블 이름
-                              .arg(cond); // 조건 컬럼 (헤더) 이름
+    QString queryString = QString("SELECT * FROM %1 WHERE RFID_UUID = :id_value").arg(TableName);   // 테이블 이름
 
     if (!query.prepare(queryString)) {
         qWarning() << "Failed to prepare query for getByCondition:" << query.lastError().text();
@@ -115,7 +113,7 @@ QJsonObject AccountDB::getByCondition(const QString &cond, const QString &id)
     }
 
     // 3. 플레이스홀더에 값 바인딩
-    query.bindValue(":id_value", id); // 여기서는 id가 QString이므로 직접 바인딩
+    query.bindValue(":id_value", cond); // 여기서는 id가 QString이므로 직접 바인딩
 
     // 4. 쿼리 실행
     if (query.exec()) {
@@ -131,9 +129,10 @@ QJsonObject AccountDB::getByCondition(const QString &cond, const QString &id)
                 // QVariant를 QJsonValue로 변환하여 QJsonObject에 추가
                 resultObject[fieldName] = QJsonValue::fromVariant(fieldValue);
             }
+            resultObject["success"] = 1;
         } else {
             // 조건에 맞는 데이터가 없음
-            qDebug() << "No data found for" << cond << "=" << id << "in table:" << TableName;
+            qDebug() << "No data found for" << "RFID_UUID" << "=" << id << "in table:" << TableName;
         }
     } else {
         // 쿼리 실행 실패
@@ -166,22 +165,166 @@ bool AccountDB::insert(const QJsonObject &data)
 
 bool AccountDB::update(int id, const QJsonObject &data)
 {
-    QString sql = buildUpdateQuery(TableName, id, data);
-    QSqlQuery query;
-    query.prepare(sql);
+    qDebug() << "--- AccountDB update start ---";
+    QJsonObject recvdata;
+    if(id==0){ //deposit
+        //여기서 data열어서 UID랑 amount랑 name들고옴.
+        if(!data.isEmpty()&&data["data"].isObject()){
+            recvdata = data["data"].toObject();
+        }
+        QString UID = recvdata["UID"].toString();
+        qDebug()<<UID;
+        QString Ruid = "-1";
+        if(UID=="B1457D09"){
+            qDebug()<<"here";
+            Ruid="12345678";
+        }else if(UID=="F3CC65BD"){
+            Ruid="87654321";
+        }else {
+            Ruid="-1";
+        }
+        QString amount = recvdata["amount"].toString();
+        QString connName;
+        connName = QString("conn_%1").arg((quintptr)QThread::currentThreadId());
+        {
+            QSqlQuery query(DataManager::instance().createThreadConnection(connName));
+            QString queryString = QString("UPDATE %1 SET balance = balance + :amount WHERE RFID_UUID = :uid").arg(TableName);
+            //prepare
+            if (!query.prepare(queryString)) {
+                qWarning() << "Deposit query prepare failed:" << query.lastError().text();
+                return false;
+            }
+            //bind value
+            query.bindValue(":amount", amount);
+            query.bindValue(":uid", Ruid);
 
-    bindJsonToQuery(query, data);
-    query.bindValue(":id", id);
+            if (!query.exec()) {
+                m_lastError = query.lastError();
+                qDebug() << "Deposit 실패:" << m_lastError.text();
+                return false;
+            }
+            if (query.numRowsAffected() == 0) {
+                qDebug() << "Deposit failed No Data" << Ruid;
+                return false;
+            }
+            if (query.isActive()) query.finish();
+            query.clear();
+        }
+        DataManager::instance().closeThreadConnection(connName);
+        qDebug() << "Deposit success UID:" << UID << "Amount:" << amount;
+        return true;
+    }
+    else if(id==1){//withdraw
+        if(!data.isEmpty()&&data["data"].isObject()){
+            recvdata = data["data"].toObject();
+        }
+        QString UID = recvdata["UID"].toString();
+        QString Ruid = "-1";
+        QString amount = recvdata["amount"].toString();
+        QString connName;
+        connName = QString("conn_%1").arg((quintptr)QThread::currentThreadId());
+        {
+            QSqlQuery query(DataManager::instance().createThreadConnection(connName));
+            QString queryString = QString("UPDATE %1 SET balance = balance - :amount WHERE RFID_UUID = :uid AND balance >= :amount").arg(TableName);
+            //prepare
+            if (!query.prepare(queryString)) {
+                qWarning() << "withdraw query prepare failed:" << query.lastError().text();
+                return false;
+            }
+            if(UID=="B1457D09"){
+                Ruid="12345678";
+            }else if(UID=="F3CC65BD"){
+                Ruid="87654321";
+            }else {
+                Ruid="-1";
+            }
+            //bind value
+            query.bindValue(":amount", amount);
+            query.bindValue(":uid", Ruid);
 
-    if (!query.exec()) {
-        m_lastError = query.lastError();
-        qDebug() << "업데이트 실패:" << m_lastError.text();
-        //emit operationCompleted(false, "update", m_lastError);
+            if (!query.exec()) {
+                qWarning() << "withdraw query exec failed:" << query.lastError().text();
+                return false;
+            }
+            if (query.numRowsAffected() == 0) {
+                qDebug() << "Withdraw failed (Insufficient funds) UID:" << UID;
+                return false;
+            }
+            if (query.isActive()) query.finish();
+            query.clear();
+        }
+        DataManager::instance().closeThreadConnection(connName);
+        qDebug() << "Withdraw success UID:" << UID << "Amount:" << amount;
+        return true;
+    }
+    else if(id==2){//send
+        if (!DataManager::instance().getDB().transaction()) {
+            qWarning() << "Failed to start transaction:" << DataManager::instance().getDB().lastError().text();
+            return false;
+        }
+        if(!data.isEmpty()&&data["data"].isObject()){
+            recvdata = data["data"].toObject();
+        }
+        QString FromUid = recvdata["UID"].toString();
+        QString FromUID="-1";
+        if(FromUid=="B1457D09"){
+            FromUID="12345678";
+        }else if(FromUid=="F3CC65BD"){
+            FromUID="87654321";
+        }else {
+            FromUID="-1";
+        }
+        QString amount = recvdata["amount"].toString();
+        QString ToUID = recvdata["targetUID"].toString();
+
+        // 1. 출금 (보내는 사람)
+        QSqlQuery withdrawQuery(DataManager::instance().getDB());
+        QString withdrawStr = QString("UPDATE %1 SET balance = balance - :amount WHERE RFID_UUID = :uid AND balance >= :amount").arg(TableName);
+
+        if (!withdrawQuery.prepare(withdrawStr)) {
+            qWarning() << "Withdraw prepare failed:" << withdrawQuery.lastError().text();
+            DataManager::instance().getDB().rollback();
+            return false;
+        }
+        withdrawQuery.bindValue(":amount", amount);
+        withdrawQuery.bindValue(":uid", FromUID);
+
+        if (!withdrawQuery.exec() || withdrawQuery.numRowsAffected() == 0) {
+            qWarning() << "Withdraw failed (Insufficient funds):" << withdrawQuery.lastError().text();
+            DataManager::instance().getDB().rollback();
+            return false;
+        }
+
+        // 2. 예금 (받는 사람)
+        QSqlQuery depositQuery(DataManager::instance().getDB());
+        QString depositStr = QString("UPDATE %1 SET balance = balance + :amount WHERE RFID_UUID = :uid").arg(TableName);
+        if (!depositQuery.prepare(depositStr)) {
+            qWarning() << "SEND prepare failed:" << depositQuery.lastError().text();
+            DataManager::instance().getDB().rollback();
+            return false;
+        }
+        depositQuery.bindValue(":amount", amount);
+        depositQuery.bindValue(":uid", ToUID);
+
+        if (!depositQuery.exec() || depositQuery.numRowsAffected() == 0) {
+            qWarning() << "SEND failed (Receiver not found):" << depositQuery.lastError().text();
+            DataManager::instance().getDB().rollback();
+            return false;
+        }
+
+        // 3. 커밋
+        if (!DataManager::instance().getDB().commit()) {
+            qWarning() << "Transaction commit failed:" << DataManager::instance().getDB().lastError().text();
+            DataManager::instance().getDB().rollback();
+            return false;
+        }
+        return true;
+    }
+    else
+    {
+        qDebug()<<"error came exit";
         return false;
     }
-
-    //emit operationCompleted(true, "update");
-    return true;
 }
 
 bool AccountDB::remove(int id)

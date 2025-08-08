@@ -17,11 +17,12 @@ public:
 
     // table 이름으로 QHttpServerResponse 생성
     QHttpServerResponse buildResponse(const QString &table) const;
+    QHttpServerResponse buildResponseWhere(const QString &table,QString con1, QString con2) const;
     QHttpServerResponse buildResponseRecent(const QString &table) const;
     QHttpServerResponse buildPostResponse(const QString &table, const bool &isPost) const;
     // post
     bool InsertSuccess(const QHttpServerRequest &request,const QString &table);
-
+    bool UpdateSuccess(const QHttpServerRequest &request,const QString &table);
 private:
     QMap<QString, DataBase*> dbMap;
 };

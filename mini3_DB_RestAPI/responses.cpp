@@ -10,9 +10,17 @@ QFuture<QHttpServerResponse> Responses::asyncResponse(const QString &table) cons
     });
 }
 
-QFuture<QHttpServerResponse> Responses::asyncPostResponse(const QString &table, const bool &isPost) const
+QFuture<QHttpServerResponse> Responses::asyncResponseWhere(const QString &table, QString con1, QString con2) const
+{
+    qDebug() << "Responses asyncResponseWhere start";
+    return QtConcurrent::run([this, table,con1,con2]() {
+        return eps_.buildResponseWhere(table,con1,con2);
+    });
+}
+
+QFuture<QHttpServerResponse> Responses::asyncPostResponse(const QString &table,const bool &isPost) const
 {
     return QtConcurrent::run([this, table,isPost]() {
-        return eps_.buildPostResponse(table,isPost);
+            return eps_.buildPostResponse(table,isPost);
     });
 }
