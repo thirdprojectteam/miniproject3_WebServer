@@ -13,6 +13,7 @@ SOURCES += \
     announcedb.cpp \
     announcelogdb.cpp \
     apiserver.cpp \
+    atmlogdb.cpp \
     clientdb.cpp \
     database.cpp \
     datamanager.cpp \
@@ -26,6 +27,7 @@ HEADERS += \
     announcedb.h \
     announcelogdb.h \
     apiserver.h \
+    atmlogdb.h \
     clientdb.h \
     database.h \
     datamanager.h \

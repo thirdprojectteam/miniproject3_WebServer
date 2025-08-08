@@ -12,6 +12,7 @@ APIServer::APIServer(QObject *parent)
     endpoints.registerDb("accountdb",&accdb);
     endpoints.registerDb("announcedb",&anndb);
     endpoints.registerDb("announcelogdb",&annlogdb);
+    endpoints.registerDb("atmlogdb",&atmlogdb);
 }
 
 APIServer::~APIServer()
@@ -67,6 +68,10 @@ void APIServer::stop()
 void APIServer::setupRoutes()
 {
     httpServer->route("/client/<arg>",\
+    QHttpServerRequest::Method::Get,[this](const QString &table) -> QFuture<QHttpServerResponse>{
+        return response.asyncResponse(table); });
+
+    httpServer->route("/client/<arg>/latest",\
     QHttpServerRequest::Method::Get,[this](const QString &table) -> QFuture<QHttpServerResponse>{
         return response.asyncResponse(table); });
 

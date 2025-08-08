@@ -15,19 +15,19 @@ class NetworkHandler : public QObject
 public:
     explicit NetworkHandler(QObject *parent = nullptr);
     ~NetworkHandler();
-
+    //http Rest
     QNetworkReply* sendGetRequest(const QString &endpoint);
     QNetworkReply* sendPostRequest(const QString &endpoint, const QByteArray &data);
+    QNetworkReply* sendPutRequest(const QString &endpoint, const QByteArray &data);
 
 signals:
     // -- 이 부분 시그널에 QNetworkReply* 인자를 추가합니다 --
-    //void getRequestFinished(const QJsonObject &data, QNetworkReply* reply);
-    void getRequestFinished(const QJsonArray &data, QNetworkReply* reply);
-    void postRequestFinished(const QJsonObject &data, QNetworkReply* reply);
+    //http Rest
+    void requestFinished(const QJsonDocument &data, QNetworkReply* reply);
     void requestFailed(const QString &errorString, QNetworkReply* reply);
 private slots:
-    void onGetReplyFinished(QNetworkReply *reply);
-    void onPostReplyFinished(QNetworkReply *reply);
+    //http Rest
+    void onReplyFinished(QNetworkReply *reply);
 
 private:
     QNetworkAccessManager *manager;

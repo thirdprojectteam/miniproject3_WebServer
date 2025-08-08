@@ -14,11 +14,49 @@ AnnounceLogDB::~AnnounceLogDB()
 
 }
 
+QJsonObject AnnounceLogDB::getLatest()
+{
+    qDebug() << "AtmLogDB getLatest start";
+    QJsonObject result;
+    QString sql = "SELECT * FROM " + TableName + " ORDER BY id DESC LIMIT 1";
+    QString connName = QString("conn_%1").arg((quintptr)QThread::currentThreadId());
+    {
+        QSqlQuery query(DataManager::instance().createThreadConnection(connName));
+
+        if (!query.exec(sql)) {
+            m_lastError = query.lastError();
+            qDebug() << "조회 실패:" << m_lastError.text();
+        } else if (query.next()) {
+            const auto rec = query.record();
+            for (int i = 0; i < rec.count(); ++i) {
+                result.insert(rec.fieldName(i), QJsonValue::fromVariant(query.value(i)));
+            }
+        } else {
+            // 레코드가 없을 때: 빈 객체 반환 (필요하면 에러 메시지/상태 코드로 처리)
+            qDebug() << "조회 결과 없음";
+        }
+        if (query.isActive()) query.finish();
+        query.clear();
+    }
+    DataManager::instance().closeThreadConnection(connName);
+    return result;
+}
+
 QJsonArray AnnounceLogDB::getAll()
 {
     qDebug() << "AnnounceLogDB getAll start";
     QJsonArray result;
-    QString sql = "SELECT * FROM " + TableName;
+    QString sql = QString(
+        "SELECT a.id AS announce_id, "
+        "       a.title, "
+        "       COUNT(l.id) AS record_count "
+        "FROM announcedb a "
+        "JOIN %1 l "
+        "  ON a.id = l.announce_id "
+        "GROUP BY a.id, a.title "
+        "ORDER BY record_count DESC"
+        ).arg(TableName);
+
     QString connName;
     connName = QString("conn_%1").arg((quintptr)QThread::currentThreadId());
     {

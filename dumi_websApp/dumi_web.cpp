@@ -39,12 +39,8 @@ dumi_web::dumi_web(QWidget *parent) : QWidget(parent)
 
     // QNetworkAccessManager는 NetworkHandler 내부에서 초기화됨
     networkHandler = new NetworkHandler(this);
-    // -- connect 시그니처를 변경된 슬롯에 맞게 수정 --
-    //connect(networkHandler, &NetworkHandler::getRequestFinished, this, &dumi_web::handleGetResult);
-    connect(networkHandler, &NetworkHandler::postRequestFinished, this, &dumi_web::handlePostResult);
+    connect(networkHandler, &NetworkHandler::requestFinished, this, &dumi_web::handleResult);
     connect(networkHandler, &NetworkHandler::requestFailed, this, &dumi_web::handleRequestError);
-    connect(networkHandler, &NetworkHandler::getRequestFinished, this, &dumi_web::handleGetArrayResult);
-
     // --- 여기에 서버 실행 코드 추가 ---
     // 포트는 portInput에 설정된 8081을 사용하도록 합니다.
     // QHostAddress::Any는 모든 네트워크 인터페이스로부터의 연결을 허용합니다.
@@ -61,7 +57,60 @@ dumi_web::dumi_web(QWidget *parent) : QWidget(parent)
                             .arg(tcpServer->serverAddress().toString())
                             .arg(tcpServer->serverPort()));
     }
+    //WebSocketServer 연결
+    wsServer = new QWebSocketServer(QStringLiteral("Chat Server"),
+                                    QWebSocketServer::NonSecureMode,
+                                    this);
 
+    int wsPort = 9000;
+    if (wsServer->listen(QHostAddress::Any, wsPort)) {
+        InfoMsg->append(tr("WebSocket server running on port %1").arg(wsPort));
+
+        connect(wsServer, &QWebSocketServer::newConnection, this, [this]() {
+            QWebSocket* clientSocket = wsServer->nextPendingConnection();
+            chatClients.append(clientSocket);
+
+            InfoMsg->append("New WebSocket Chat Client Connected.");
+
+            // 첫 메시지는 닉네임으로 처리
+            connect(clientSocket, &QWebSocket::textMessageReceived, this,
+                    [this, clientSocket](const QString &message) {
+
+                        if (!clientNames.contains(clientSocket)) {
+                            // 아직 등록되지 않은 클라이언트 → 첫 메시지는 닉네임
+                            clientNames[clientSocket] = message;
+                            InfoMsg->append(QString("Client registered with nickname: %1").arg(message));
+                            clientSocket->sendTextMessage(QString("Welcome, %1!").arg(message));
+                            return;
+                        }
+
+                        // 닉네임 등록된 클라이언트 → 메시지 브로드캐스트
+                        QString senderName = clientNames.value(clientSocket, "Unknown");
+                        QString fullMessage = QString("%1: %2").arg(senderName, message);
+
+                        InfoMsg->append("Broadcasting: " + fullMessage);
+
+                        for (QWebSocket* client : chatClients) {
+                            if (client != clientSocket && client->isValid()) {
+                                client->sendTextMessage(fullMessage);
+                            }
+                        }
+                    });
+
+            // 연결 해제
+            connect(clientSocket, &QWebSocket::disconnected, this, [this, clientSocket]() {
+                QString name = clientNames.value(clientSocket, "Unknown");
+                InfoMsg->append(QString("Client disconnected: %1").arg(name));
+
+                chatClients.removeAll(clientSocket);
+                clientNames.remove(clientSocket);
+                clientSocket->deleteLater();
+            });
+        });
+    } else {
+        InfoMsg->append("Failed to start WebSocket server.");
+        qApp->quit();
+    }
 }
 
 dumi_web::~dumi_web(){
@@ -75,17 +124,17 @@ void dumi_web::newConnect(){
     connect(sock,SIGNAL(disconnected()),sock,SLOT(deleteLater()));
 }
 
-void dumi_web::handleGetResult(const QJsonObject &data, QNetworkReply* apiReply) // apiReply로 이름을 바꿔 명확하게 함
+void dumi_web::handleResult(const QJsonDocument &data, QNetworkReply* apiReply) // apiReply로 이름을 바꿔 명확하게 함
 {
-    qDebug() << "GET Request Result:" << data;
-    InfoMsg->append("GET Result: " + QJsonDocument(data).toJson(QJsonDocument::Compact));
+    qDebug() << "Request Result:" << data;
+    InfoMsg->append("Result: " + QJsonDocument(data).toJson(QJsonDocument::Compact));
 
     // 맵에서 해당 QNetworkReply*와 연결된 클라이언트 QTcpSocket*을 찾습니다.
     QTcpSocket* clientSocket = pendingApiReplies.take(apiReply); // 사용 후 맵에서 제거
 
     if (clientSocket && clientSocket->isOpen() && clientSocket->state() == QAbstractSocket::ConnectedState) {
-        QJsonDocument doc(data);
-        QByteArray jsonResponse = doc.toJson(QJsonDocument::Compact); // JSON 데이터를 압축된 형태로 변환
+        //QJsonDocument doc(data);
+        QByteArray jsonResponse = data.toJson(QJsonDocument::Compact); // JSON 데이터를 압축된 형태로 변환
 
         // HTTP 응답 헤더 작성
         QString httpResponse = "HTTP/1.1 200 OK\r\n"
@@ -107,35 +156,6 @@ void dumi_web::handleGetResult(const QJsonObject &data, QNetworkReply* apiReply)
 
     // apiReply->deleteLater(); // NetworkHandler에서 이미 호출하고 있다면 여기서는 필요 없음
     // 만약 NetworkHandler에서 deleteLater를 호출하지 않았다면 여기에 추가
-}
-
-// handlePostResult 및 handleRequestError도 유사하게 QNetworkReply* 인자를 받고 처리해야 합니다.
-void dumi_web::handlePostResult(const QJsonObject &data, QNetworkReply* apiReply)
-{
-    qDebug() << "POST Request Result:" << data;
-    InfoMsg->append("POST Result: " + QJsonDocument(data).toJson(QJsonDocument::Compact));
-
-    QTcpSocket* clientSocket = pendingApiReplies.take(apiReply);
-
-    if (clientSocket && clientSocket->isOpen() && clientSocket->state() == QAbstractSocket::ConnectedState) {
-        QJsonDocument doc(data);
-        QByteArray jsonResponse = doc.toJson(QJsonDocument::Compact);
-
-        QString httpResponse = "HTTP/1.1 200 OK\r\n"
-                               "Content-Type: application/json\r\n"
-                               "Content-Length: " + QString::number(jsonResponse.size()) + "\r\n"
-                                                                        "Connection: close\r\n"
-                                                                        "\r\n";
-
-        clientSocket->write(httpResponse.toUtf8());
-        clientSocket->write(jsonResponse);
-        clientSocket->flush();
-        clientSocket->disconnectFromHost();
-        InfoMsg->append("Sent API JSON response back to client for POST.");
-    } else {
-        qWarning() << "Client socket for POST API reply not found or disconnected!";
-        InfoMsg->append("Warning: Client socket for POST API reply was invalid or disconnected.");
-    }
 }
 
 void dumi_web::handleRequestError(const QString &errorString, QNetworkReply* apiReply)
@@ -162,40 +182,6 @@ void dumi_web::handleRequestError(const QString &errorString, QNetworkReply* api
     }
 }
 
-void dumi_web::handleGetArrayResult(const QJsonArray &data, QNetworkReply *reply)
-{
-    // 디버그 및 UI 로그: GET 결과
-    qDebug() << "GET Request Result (Array):" << data;
-    InfoMsg->append("GET Result: " + QJsonDocument(data).toJson(QJsonDocument::Compact));
-
-    // API 요청-응답 매핑에서 소켓 가져오기
-    QTcpSocket* clientSocket = pendingApiReplies.take(reply);
-
-    if (clientSocket && clientSocket->isOpen() && clientSocket->state() == QAbstractSocket::ConnectedState) {
-        // JSON 배열을 QJsonDocument로 래핑
-        QJsonDocument doc(data);
-        QByteArray jsonResponse = doc.toJson(QJsonDocument::Compact);
-
-        // HTTP 응답 헤더 및 바디 구성
-        QString httpResponse =
-            "HTTP/1.1 200 OK\r\n"
-            "Content-Type: application/json\r\n"
-            "Content-Length: " + QString::number(jsonResponse.size()) + "\r\n"
-                                                     "Connection: close\r\n"
-                                                     "\r\n";
-
-        // 클라이언트로 전송
-        clientSocket->write(httpResponse.toUtf8());
-        clientSocket->write(jsonResponse);
-        clientSocket->flush();
-        clientSocket->disconnectFromHost();
-
-        InfoMsg->append("Sent API JSON response back to client for GET.");
-    } else {
-        qWarning() << "Client socket for GET API reply not found or disconnected!";
-        InfoMsg->append("Warning: Client socket for GET API reply was invalid or disconnected.");
-    }
-}
 // 클라이언트 요청 처리 함수 수정
 void dumi_web::readClient()
 {
@@ -274,7 +260,33 @@ void dumi_web::readClient()
             socket->disconnectFromHost();
             InfoMsg->append("Error: Failed to send internal API request.");
         }
-    } else {
+    }else if(requestLine.startsWith("PUT")){
+        QString apiEndpoint = "http://localhost:8080" + path;
+        InfoMsg->append("Forwarding API Post request to: " + apiEndpoint);
+
+        QByteArray requestData;
+        // Body를 다 읽어온 경우
+        while (socket->bytesAvailable()) {
+            requestData.append(socket->readAll());
+        }
+        //여기 index값 수정되었습니다. -> 이제 header빼고 body부분만 보냅니다.
+        InfoMsg->append("PUT Body Data: " + QString::fromUtf8(requestData));
+        int headerEndIndex = requestData.indexOf("\r\n\r\n");
+
+        QByteArray bodyData = requestData.mid(headerEndIndex + 4);
+
+        QNetworkReply* reply = networkHandler->sendPutRequest(apiEndpoint, bodyData);
+
+        if(reply){
+            pendingApiReplies.insert(reply, socket);
+        } else {
+            QString errorMsg = "HTTP/1.1 500 Internal Server Error\r\n\r\n";
+            socket->write(errorMsg.toUtf8());
+            socket->flush();
+            socket->disconnectFromHost();
+            InfoMsg->append("Error: Failed to send internal API request.");
+        }
+    }else {
         // 다른 HTTP 메서드 (POST 등) 처리 또는 오류 응답
         QString errorMsg = "HTTP/1.1 405 Method Not Allowed\r\n\r\n";
         socket->write(errorMsg.toUtf8());

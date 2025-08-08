@@ -9,7 +9,8 @@ public:
     AnnounceDB();
     ~AnnounceDB();
     //출력
-    QJsonArray getAll() override;
+    QJsonArray  getAll() override;
+    QJsonObject getLatest() override;
     QJsonObject getById(int id) override;
     QJsonObject getByCondition(const QString &cond,const QString &id) override;
     //입력

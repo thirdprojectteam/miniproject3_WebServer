@@ -1,23 +1,20 @@
-#include "clientdb.h"
+#include "atmlogdb.h"
 #include "datamanager.h"
-
-#include <QJsonArray>
 #include <QJsonObject>
-#include <QSqlQuery>
-#include <QSqlRecord>
+#include <QJsonArray>
 #include <QThread>
 
-ClientDB::ClientDB()
+AtmLogDB::AtmLogDB()
 {
-    TableName = "clientdb";
+    TableName = "atmlogdb";
 }
 
-ClientDB::~ClientDB()
+AtmLogDB::~AtmLogDB()
 {
 
 }
 
-QJsonObject ClientDB::getLatest()
+QJsonObject AtmLogDB::getLatest()
 {
     qDebug() << "AtmLogDB getLatest start";
     QJsonObject result;
@@ -45,18 +42,11 @@ QJsonObject ClientDB::getLatest()
     return result;
 }
 
-QJsonArray ClientDB::getAll()
+QJsonArray AtmLogDB::getAll()
 {
+    qDebug() << "AtmLogDB getAll start";
     QJsonArray result;
-    QString sql = QString(
-                      "SELECT c.*, "
-                      "CASE WHEN EXISTS ("
-                      "  SELECT 1 "
-                      "  FROM accountdb AS a "
-                      "  WHERE a.client_id = c.id"
-                      ") THEN 1 ELSE 0 END AS hasAccount "
-                      "FROM %1 AS c"
-                      ).arg(TableName);
+    QString sql = "SELECT * FROM " + TableName;
     QString connName;
     connName = QString("conn_%1").arg((quintptr)QThread::currentThreadId());
     {
@@ -83,7 +73,7 @@ QJsonArray ClientDB::getAll()
     return result;
 }
 
-QJsonObject ClientDB::getById(int id)
+QJsonObject AtmLogDB::getById(int id)
 {
     QJsonObject result;
 
@@ -105,7 +95,7 @@ QJsonObject ClientDB::getById(int id)
     return result;
 }
 
-QJsonObject ClientDB::getByCondition(const QString &cond, const QString &id)
+QJsonObject AtmLogDB::getByCondition(const QString &cond, const QString &id)
 {
     QJsonObject resultObject; // 결과를 담을 QJsonObject
     // 2. SQL 쿼리 준비 (플레이스홀더 사용)
@@ -153,26 +143,28 @@ QJsonObject ClientDB::getByCondition(const QString &cond, const QString &id)
     return resultObject;
 }
 
-bool ClientDB::insert(const QJsonObject &data)
+bool AtmLogDB::insert(const QJsonObject &data)
 {
-    QString sql = buildInsertQuery(TableName, data);
-    QSqlQuery query;
-    query.prepare(sql);
+    QString connName;
+    connName = QString("conn_%1").arg((quintptr)QThread::currentThreadId());
+    {
+        QString sql = buildInsertQuery(TableName, data);
+        QSqlQuery query(DataManager::instance().createThreadConnection(connName));
+        query.prepare(sql);
 
-    bindJsonToQuery(query, data);
+        bindJsonToQuery(query, data);
 
-    if (!query.exec()) {
-        m_lastError = query.lastError();
-        qDebug() << "삽입 실패:" << m_lastError.text();
-        //emit operationCompleted(false, "insert", m_lastError);
-        return false;
+        if (!query.exec()) {
+            m_lastError = query.lastError();
+            qDebug() << "삽입 실패:" << m_lastError.text();
+            return false;
+        }
     }
-
-    //emit operationCompleted(true, "insert");
+    DataManager::instance().closeThreadConnection(connName);
     return true;
 }
 
-bool ClientDB::update(int id, const QJsonObject &data)
+bool AtmLogDB::update(int id, const QJsonObject &data)
 {
     QString sql = buildUpdateQuery(TableName, id, data);
     QSqlQuery query;
@@ -192,7 +184,7 @@ bool ClientDB::update(int id, const QJsonObject &data)
     return true;
 }
 
-bool ClientDB::remove(int id)
+bool AtmLogDB::remove(int id)
 {
     QSqlQuery query;
     query.prepare("DELETE FROM " + TableName + " WHERE id = :id");
@@ -209,7 +201,7 @@ bool ClientDB::remove(int id)
     return true;
 }
 
-QString ClientDB::buildUpdateQuery(const QString &table, int id, const QJsonObject &data)
+QString AtmLogDB::buildUpdateQuery(const QString &table, int id, const QJsonObject &data)
 {
     QStringList setStatements;
 
@@ -222,7 +214,7 @@ QString ClientDB::buildUpdateQuery(const QString &table, int id, const QJsonObje
         .arg(setStatements.join(", "));
 }
 
-QString ClientDB::buildInsertQuery(const QString &table, const QJsonObject &data)
+QString AtmLogDB::buildInsertQuery(const QString &table, const QJsonObject &data)
 {
     QStringList fields;
     QStringList placeholders;
@@ -238,7 +230,7 @@ QString ClientDB::buildInsertQuery(const QString &table, const QJsonObject &data
         .arg(placeholders.join(", "));
 }
 
-void ClientDB::bindJsonToQuery(QSqlQuery &query, const QJsonObject &data)
+void AtmLogDB::bindJsonToQuery(QSqlQuery &query, const QJsonObject &data)
 {
     for (auto it = data.constBegin(); it != data.constEnd(); ++it) {
         QString placeholder = ":" + it.key();
@@ -246,4 +238,3 @@ void ClientDB::bindJsonToQuery(QSqlQuery &query, const QJsonObject &data)
         query.bindValue(placeholder, value);
     }
 }
-

@@ -11,7 +11,8 @@ class DataBase: public QObject
 public:
     explicit DataBase(QObject *parent = nullptr);
     //출력
-    virtual QJsonArray getAll() = 0;
+    virtual QJsonArray  getAll() = 0;
+    virtual QJsonObject getLatest() = 0;
     virtual QJsonObject getById(int id)= 0;
     virtual QJsonObject getByCondition(const QString &cond,const QString &id)= 0;
     //입력

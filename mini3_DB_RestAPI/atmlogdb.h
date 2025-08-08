@@ -1,18 +1,18 @@
-#ifndef ACCOUNTDB_H
-#define ACCOUNTDB_H
+#ifndef ATMLOGDB_H
+#define ATMLOGDB_H
 
 #include "database.h"
 
-class AccountDB : public DataBase
+class AtmLogDB : public DataBase
 {
 public:
-    AccountDB();
-    ~AccountDB();
+    AtmLogDB();
+    ~AtmLogDB();
     //출력
     QJsonArray  getAll() override;
-    QJsonObject getLatest() override;
     QJsonObject getById(int id) override;
     QJsonObject getByCondition(const QString &cond,const QString &id) override;
+    QJsonObject getLatest() override;
     //입력
     bool insert(const QJsonObject &data) override;
     bool update(int id, const QJsonObject &data) override;
@@ -23,5 +23,4 @@ private:
     QString buildInsertQuery(const QString &table, const QJsonObject &data) override;
     void bindJsonToQuery(QSqlQuery &query, const QJsonObject &data) override;
 };
-
-#endif // ACCOUNTDB_H
+#endif // ATMLOGDB_H

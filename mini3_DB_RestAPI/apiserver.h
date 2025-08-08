@@ -13,6 +13,7 @@
 #include "accountdb.h"
 #include "announcedb.h"
 #include "announcelogdb.h"
+#include "atmlogdb.h"
 #include "endpoints.h"
 #include "responses.h"
 
@@ -40,6 +41,7 @@ private:
     AccountDB     accdb;
     AnnounceDB    anndb;
     AnnounceLogDB annlogdb;
+    AtmLogDB      atmlogdb;
     EndPoints     endpoints;
     Responses     response;
 };

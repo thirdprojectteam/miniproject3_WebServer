@@ -30,6 +30,21 @@ QHttpServerResponse EndPoints::buildResponse(const QString &table) const
     };
 }
 
+QHttpServerResponse EndPoints::buildResponseRecent(const QString &table) const
+{
+    qDebug() << "EndPoints buildResponseRecent start, table=" << table;
+    QJsonDocument doc;
+    if (auto it = dbMap.find(table); it != dbMap.end()) {
+        doc = QJsonDocument(it.value()->getLatest());
+        qDebug() << "EndPoints recent data:" << doc.toJson();
+    }
+    return QHttpServerResponse{
+        "application/json",
+        doc.toJson(QJsonDocument::Compact)
+    };
+}
+
+
 QHttpServerResponse EndPoints::buildPostResponse(const QString &table, const bool &isPost) const
 {
     QJsonDocument doc;
