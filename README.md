@@ -1,3 +1,8 @@
+# 웹서버 라이브러리 정리 
+- QT += core network httpserver
+
+
+
 # MySQL 과 Qt6 연동방법
 
 1. MySQL과 관련된 라이브러리를 다운 받습니다. (주의 버전이 일치하는 것을 다운 받습니다)
